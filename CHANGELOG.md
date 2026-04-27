@@ -6,6 +6,8 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
+## 2.0.1 - 2026-04-28
+
 - Added sparse link graph guidance for high-signal task, docs, PR, ledger, and verification references.
 - Added final auto-research validation task guidance for binary/frozen evaluator checks before project completion.
 - Hardened `linear-agent finalize` so it refuses empty ledgers and unfinished issue rows.
