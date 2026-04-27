@@ -1,0 +1,47 @@
+version: 1
+mode: update
+profile: public-oss
+owner: MJWNA
+repo: linear-project-planner-skill
+visibility: public
+default_branch: main
+description: Codex skill for agent-ready Linear project planning, execution ledgers, and issue-state hygiene
+homepage: ""
+topics:
+  - codex
+  - linear
+  - ai-agents
+  - project-management
+  - automation
+  - markdown-ledger
+license: mit
+gitignore_template: ""
+maintainers:
+  owner_team: ""
+  technical_owner: "@MJWNA"
+  business_owner: "@MJWNA"
+contacts:
+  support: "GitHub issues"
+  security: "GitHub private vulnerability reporting"
+data:
+  classification: public
+  production_write_paths: []
+  secrets_location: "No secrets should be committed. Use local environment/config only."
+features:
+  issues: true
+  wiki: false
+  discussions: false
+  projects: false
+hardening:
+  ruleset: light
+  codeowners_required: true
+  dependabot: true
+  codeql: false
+  scorecard: false
+release:
+  strategy: manual
+  initial_tag: ""
+skips:
+  codeql: "Shell/Markdown skill repo; CI covers syntax, YAML, and regression tests."
+  scorecard: "Deferred until the repo is intended for broader community contribution."
+  social_preview: "Manual GitHub UI upload if the repo is shared publicly at scale."

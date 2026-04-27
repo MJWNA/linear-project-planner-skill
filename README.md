@@ -6,7 +6,7 @@ This skill helps an AI agent turn a Linear project into a real execution system.
 
 The core idea is simple: Linear is the canonical project tracker, but agents also need a durable local memory file that explains the original prompt, the current state, which tasks are done, which issue is active, what was verified, and what the next safest action is.
 
-## Why This Exists
+## What This Solves
 
 AI agents are good at doing work, but long-running project execution has a few recurring failure modes:
 
@@ -19,7 +19,7 @@ AI agents are good at doing work, but long-running project execution has a few r
 
 This skill fixes those problems by making project execution explicit. It gives the agent a repeatable structure to create the Linear project, keep issue progress accurate, write completion comments, preserve verification evidence, and maintain a living Markdown ledger alongside Linear.
 
-## What It Does
+## How It Works
 
 The skill has two halves:
 
@@ -63,7 +63,7 @@ The checklist supports three states:
 
 That third state matters. Without it, future agents cannot tell the difference between "not done yet" and "intentionally not needed for this project." For example, a production gate may be mandatory for a live application, but not applicable for a local skill packaging project.
 
-## How The Workflow Works
+## Technical Workflow
 
 ### 1. Plan The Project
 
@@ -198,7 +198,7 @@ linear-agent finalize \
 
 `finalize` updates the ledger to a no-active-issue state, marks completed checklist items, removes placeholder progress rows, and prints the final Linear comment/read-back actions. It requires explicit dependency, production, and sink/output gate outcomes so an agent cannot silently mark risky project gates as not applicable.
 
-## Command Reference
+## Commands
 
 ### Initialise A Ledger
 
@@ -272,7 +272,7 @@ linear-agent handoff \
 ```bash
 linear-agent finalize \
   --ledger /path/to/EXECUTION.md \
-  --verification "No Todo/In Progress issues remain; final checks pass" \
+  --verification "No To Do/In Progress issues remain; final checks pass" \
   --dependencies "satisfied" \
   --production-gates "satisfied" \
   --sink-gates "not-applicable:no sync or output sink in scope"
@@ -280,7 +280,7 @@ linear-agent finalize \
 
 Gate values must be either `satisfied` or `not-applicable:<reason>`.
 
-## Why It Is Useful
+## Why It Matters
 
 This skill is useful because it treats project management as part of the execution system, not as a separate admin chore.
 
@@ -294,6 +294,8 @@ The benefits are practical:
 - Stronger completion discipline because verification is required.
 - Better auditability because comments, ledger rows, and activity logs line up.
 - More useful future sessions because the next agent can start from the ledger instead of re-deriving context.
+
+## Who It Is For
 
 It is especially useful for:
 
@@ -321,9 +323,9 @@ It is especially useful for:
     └── test-linear-agent.sh
 ```
 
-## Install
+## Quick Start
 
-From this repository root:
+Install from this repository root:
 
 ```bash
 ./install.sh
@@ -343,7 +345,18 @@ It also installs a launcher at:
 
 Make sure `~/.local/bin` is on your `PATH` if you want to run `linear-agent` from anywhere.
 
-## Test
+## Configuration
+
+The skill is configured through committed files:
+
+- `SKILL.md` defines the agent workflow and mandatory Linear execution rules.
+- `agents/openai.yaml` declares Codex-facing metadata, interfaces, policies, and dependencies.
+- `templates/EXECUTION.md` defines the live Markdown ledger created for each project.
+- `.repo-publisher.yml` records the GitHub publishing profile and repo settings contract.
+
+Runtime state should stay outside the repo. Local execution ledgers belong under ignored workspace paths such as `.codex-linear-ledgers/`.
+
+## Testing
 
 Run the regression suite:
 
@@ -365,9 +378,31 @@ Optional, if installed locally:
 shellcheck scripts/linear-agent tests/test-linear-agent.sh
 ```
 
-## Continuous Integration
+## Deployment / Release
+
+The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases are manual: tag a known-good commit after CI passes and use generated GitHub release notes when a versioned release is useful.
 
 The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It runs shell syntax checks, YAML parsing, the regression test suite, and a trailing-whitespace scan on every push and pull request.
+
+## Troubleshooting
+
+- If `linear-agent` is not found after install, ensure `~/.local/bin` is on your `PATH`.
+- If `init` refuses to write the ledger, the file already exists. Use `--force` only when replacing it is intentional.
+- If `complete` fails, add a concrete `--verification` string.
+- If `start --parallel-write` fails, provide a `--worktree` path so write-capable agents do not share one checkout.
+- If Linear state names differ in your workspace, follow the printed MCP actions and record any mismatch in the ledger.
+
+## Support
+
+Open a GitHub issue for bugs, feature requests, or usage questions. Include the command you ran, the relevant ledger snippet, and verification output where possible.
+
+## Security
+
+Do not commit secrets, credentials, private Linear workspace exports, customer data, production dumps, or local runtime ledgers. Report vulnerabilities privately through the repository security policy.
+
+## Status
+
+This repo is maintained as a public Codex skill utility. The current implementation is shell and Markdown based, with CI covering syntax, YAML metadata, regression tests, and whitespace checks.
 
 ## License
 
@@ -386,7 +421,7 @@ This project is released under the MIT License. See [LICENSE](LICENSE).
 ## Current Limitations
 
 - The wrapper does not call the Linear API directly. It updates the ledger and prints the required Linear MCP actions for the agent to perform and verify.
-- Workspace-specific Linear state names may vary. The skill assumes simple state names such as `Todo`, `In Progress`, `Done`, and `Canceled`.
+- Workspace-specific Linear state names may vary. The skill assumes simple state names such as `To Do`, `In Progress`, `Done`, and `Canceled`.
 - The included install script targets Codex-style local skill paths.
 
 ## Quick Start Prompt

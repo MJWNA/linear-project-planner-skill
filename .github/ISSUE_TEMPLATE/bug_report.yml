@@ -1,0 +1,30 @@
+name: Bug report
+description: Report a reproducible bug in the skill or wrapper
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include commands, inputs, ledger snippets, and expected versus actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, shell, Codex skill path, and relevant Linear workspace details.
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification
+      description: Include test output or command output if available.
