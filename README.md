@@ -1,5 +1,8 @@
 # Linear Project Planner Skill
 
+[![CI](https://github.com/MJWNA/linear-project-planner-skill/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MJWNA/linear-project-planner-skill/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/MJWNA/linear-project-planner-skill?style=flat)](LICENSE)
+
 Agent-ready Linear project planning, execution tracking, and cross-session handoff for Codex-style skill runtimes.
 
 This skill helps an AI agent turn a Linear project into a real execution system. Instead of producing a flat backlog and hoping future agents remember what happened, it creates a structured operating model: milestones, parent workstreams, guide issues, labels, verification gates, issue-state hygiene, and a companion Markdown execution ledger that survives context resets.
@@ -380,7 +383,7 @@ shellcheck scripts/linear-agent tests/test-linear-agent.sh
 
 ## Deployment / Release
 
-The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases are manual: tag a known-good commit after CI passes and use generated GitHub release notes when a versioned release is useful.
+The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases are manual: tag a known-good commit after CI passes, update [CHANGELOG.md](CHANGELOG.md), and use generated GitHub release notes when a versioned release is useful.
 
 The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It runs shell syntax checks, YAML parsing, the regression test suite, and a trailing-whitespace scan on every push and pull request.
 
