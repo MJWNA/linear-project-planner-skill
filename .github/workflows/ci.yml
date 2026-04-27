@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          bash -n install.sh
+          bash -n scripts/linear-agent
+          bash -n tests/test-linear-agent.sh
+
+      - name: YAML syntax
+        run: |
+          ruby -e 'require "yaml"; skill = File.read("SKILL.md"); frontmatter = skill.match(/\A---\n(.*?)\n---/m)[1]; YAML.safe_load(frontmatter); YAML.load_file("agents/openai.yaml"); puts "yaml ok"'
+
+      - name: Regression tests
+        run: bash tests/test-linear-agent.sh
+
+      - name: Trailing whitespace
+        run: |
+          ! git grep -n '[[:blank:]]$' -- \
+            README.md \
+            SKILL.md \
+            LICENSE \
+            install.sh \
+            scripts/linear-agent \
+            templates/EXECUTION.md \
+            tests/test-linear-agent.sh \
+            agents/openai.yaml \
+            .github/workflows/ci.yml

@@ -36,14 +36,15 @@ LEDGER="$TMP_DIR/EXECUTION.md"
 "$BIN" init \
   --ledger "$LEDGER" \
   --project "Agent Runtime Hardening" \
-  --prompt "Create a Linear project and execute it with agents" \
+  --prompt $'Create a Linear project\nand execute it with agents' \
   --linear-project "MAS Agent Runtime Hardening" \
   --repo "/tmp/example-repo" \
   --base-branch "main" \
   >"$TMP_DIR/init.out"
 
 assert_contains "$LEDGER" "# Linear Execution Ledger: Agent Runtime Hardening"
-assert_contains "$LEDGER" "Create a Linear project and execute it with agents"
+assert_contains "$LEDGER" "Create a Linear project"
+assert_contains "$LEDGER" "and execute it with agents"
 assert_contains "$LEDGER" "- Linear project: MAS Agent Runtime Hardening"
 assert_contains "$LEDGER" "- Repository: /tmp/example-repo"
 assert_contains "$LEDGER" "- Base branch: main"
@@ -60,18 +61,61 @@ if [ "$(grep -Fc -- "- TBD" "$LEDGER")" -lt 4 ]; then
   exit 1
 fi
 
+printf '%s\n' "do not overwrite me" >"$TMP_DIR/existing-ledger.md"
+set +e
+"$BIN" init \
+  --ledger "$TMP_DIR/existing-ledger.md" \
+  --project "Overwrite Guard" \
+  --prompt "This should fail" \
+  >"$TMP_DIR/init-overwrite.out" 2>&1
+overwrite_rc=$?
+set -e
+
+if [ "$overwrite_rc" -eq 0 ]; then
+  echo "Expected init against an existing ledger to fail without --force" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/init-overwrite.out" "Ledger already exists"
+assert_contains "$TMP_DIR/existing-ledger.md" "do not overwrite me"
+
+"$BIN" init \
+  --ledger "$TMP_DIR/existing-ledger.md" \
+  --project "Overwrite Guard" \
+  --prompt "Forced overwrite" \
+  --force \
+  >"$TMP_DIR/init-force.out"
+
+assert_contains "$TMP_DIR/existing-ledger.md" "# Linear Execution Ledger: Overwrite Guard"
+assert_not_contains "$TMP_DIR/existing-ledger.md" "do not overwrite me"
+
+set +e
+LINEAR_AGENT_TEMPLATE="$TMP_DIR/missing-template.md" "$BIN" init \
+  --ledger "$TMP_DIR/missing-template-ledger.md" \
+  --project "Missing Template" \
+  --prompt "This should fail clearly" \
+  >"$TMP_DIR/init-missing-template.out" 2>&1
+missing_template_rc=$?
+set -e
+
+if [ "$missing_template_rc" -eq 0 ]; then
+  echo "Expected init with missing template to fail" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/init-missing-template.out" "Template not found"
+
 "$BIN" start MAS-123 \
   --ledger "$LEDGER" \
   --agent "Codex" \
-  --worktree "/tmp/example-worktree" \
-  --note "Claimed for implementation with \"quoted\" note" \
+  --worktree "/tmp/example|worktree" \
+  --note $'Claimed for implementation with "quoted" note\nand pipe | value' \
   >"$TMP_DIR/start.out"
 
 assert_contains "$LEDGER" "- Active issue: MAS-123"
 assert_contains "$LEDGER" "- Active agent: Codex"
-assert_contains "$LEDGER" "- Active worktree: /tmp/example-worktree"
-assert_contains "$LEDGER" "| MAS-123 | In Progress | agent:executing | Codex | /tmp/example-worktree |"
+assert_contains "$LEDGER" "- Active worktree: /tmp/example|worktree"
+assert_contains "$LEDGER" "| MAS-123 | In Progress | agent:executing | Codex | /tmp/example\\|worktree |"
 assert_contains "$LEDGER" "Claimed for implementation with \"quoted\" note"
+assert_contains "$LEDGER" "and pipe | value"
 assert_contains "$TMP_DIR/start.out" "Required Linear MCP actions"
 assert_contains "$TMP_DIR/start.out" "_save_issue(id=\"MAS-123\", state=\"In Progress\")"
 assert_contains "$TMP_DIR/start.out" "_save_comment(issueId=\"MAS-123\", body=<comment body below>)"
@@ -117,17 +161,22 @@ assert_contains "$TMP_DIR/complete-missing-verification.out" "complete requires 
 "$BIN" complete MAS-123 \
   --ledger "$LEDGER" \
   --agent "Codex" \
-  --verification "npm test: pass" \
+  --verification $'npm test: pass | lint: pass\nsecond line' \
   --note "Implemented and verified" \
   >"$TMP_DIR/complete.out"
 
-assert_contains "$LEDGER" "| MAS-123 | Done | agent:pr-ready | Codex | /tmp/example-worktree |"
-assert_contains "$LEDGER" "npm test: pass"
+assert_contains "$LEDGER" "| MAS-123 | Done | agent:pr-ready | Codex | /tmp/example\\|worktree |"
+assert_contains "$LEDGER" "npm test: pass \\| lint: pass<br>second line"
 assert_contains "$LEDGER" "Implemented and verified"
 assert_contains "$TMP_DIR/complete.out" "_save_comment(issueId=\"MAS-123\", body=<comment body below>)"
 assert_contains "$TMP_DIR/complete.out" "_save_issue(id=\"MAS-123\", state=\"Done\")"
 assert_contains "$TMP_DIR/complete.out" "Verify with _list_issues"
 assert_contains "$LEDGER" "## Activity Log"
+if [ "$(grep -Fc "| MAS-123 |" "$LEDGER")" -ne 1 ]; then
+  echo "Expected repeated MAS-123 transitions to update one row" >&2
+  cat "$LEDGER" >&2
+  exit 1
+fi
 
 "$BIN" handoff \
   --ledger "$LEDGER" \
@@ -154,6 +203,9 @@ assert_not_contains "$LEDGER" "Final ledger reconciliation completed"
   --ledger "$LEDGER" \
   --agent "Codex" \
   --verification "all Linear issues done; fixed evaluator passed" \
+  --dependencies "not-applicable:no blocking dependencies were required" \
+  --production-gates "not-applicable:not a production application" \
+  --sink-gates "not-applicable:no sync or output sink in scope" \
   --note "Project-level checklist reconciled" \
   >"$TMP_DIR/finalize.out"
 
@@ -175,5 +227,21 @@ assert_contains "$LEDGER" "Finalized ledger. Agent: Codex. Verification: all Lin
 assert_contains "$TMP_DIR/finalize.out" "Required Linear MCP actions"
 assert_contains "$TMP_DIR/finalize.out" "_save_comment(issueId=\"<operating-guide-or-final-verification-issue>\""
 assert_contains "$TMP_DIR/finalize.out" "Verify with Linear project read-back"
+
+set +e
+"$BIN" finalize \
+  --ledger "$LEDGER" \
+  --agent "Codex" \
+  --verification "should fail without explicit gates" \
+  --dependencies "not-applicable:no blocking dependencies were required" \
+  >"$TMP_DIR/finalize-missing-gates.out" 2>&1
+missing_gates_rc=$?
+set -e
+
+if [ "$missing_gates_rc" -eq 0 ]; then
+  echo "Expected finalize without explicit gate outcomes to fail" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/finalize-missing-gates.out" "finalize requires --production-gates"
 
 echo "linear-agent tests passed"

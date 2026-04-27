@@ -150,10 +150,13 @@ For completed projects:
 ```bash
 linear-agent finalize \
   --ledger /path/to/EXECUTION.md \
-  --verification "Linear read-back complete; all checks pass"
+  --verification "Linear read-back complete; all checks pass" \
+  --dependencies "not-applicable:no blocking dependencies were required" \
+  --production-gates "not-applicable:not a production application" \
+  --sink-gates "not-applicable:no sync or output sink in scope"
 ```
 
-`finalize` updates the ledger to a no-active-issue state, marks completed checklist items, marks conditional non-applicable items with `[~]`, removes placeholder progress rows, and prints the final Linear comment/read-back actions.
+`finalize` updates the ledger to a no-active-issue state, marks completed checklist items, removes placeholder progress rows, and prints the final Linear comment/read-back actions. It requires explicit dependency, production, and sink/output gate outcomes so an agent cannot silently mark risky project gates as not applicable.
 
 ## Command Reference
 
@@ -167,6 +170,16 @@ linear-agent init \
   --linear-project "Linear Project Name" \
   --repo /path/to/repo \
   --base-branch main
+```
+
+`init` refuses to overwrite an existing ledger. Add `--force` only when you deliberately want to replace the file:
+
+```bash
+linear-agent init \
+  --ledger /path/to/EXECUTION.md \
+  --project "Project Name" \
+  --prompt "Original user prompt" \
+  --force
 ```
 
 ### Start Work
@@ -219,8 +232,13 @@ linear-agent handoff \
 ```bash
 linear-agent finalize \
   --ledger /path/to/EXECUTION.md \
-  --verification "No Todo/In Progress issues remain; final checks pass"
+  --verification "No Todo/In Progress issues remain; final checks pass" \
+  --dependencies "satisfied" \
+  --production-gates "satisfied" \
+  --sink-gates "not-applicable:no sync or output sink in scope"
 ```
+
+Gate values must be either `satisfied` or `not-applicable:<reason>`.
 
 ## Why It Is Useful
 
@@ -307,6 +325,14 @@ Optional, if installed locally:
 shellcheck scripts/linear-agent tests/test-linear-agent.sh
 ```
 
+## Continuous Integration
+
+The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It runs shell syntax checks, YAML parsing, the regression test suite, and a trailing-whitespace scan on every push and pull request.
+
+## License
+
+This project is released under the MIT License. See [LICENSE](LICENSE).
+
 ## Design Principles
 
 - Linear remains the canonical issue/status system.
@@ -322,7 +348,6 @@ shellcheck scripts/linear-agent tests/test-linear-agent.sh
 - The wrapper does not call the Linear API directly. It updates the ledger and prints the required Linear MCP actions for the agent to perform and verify.
 - Workspace-specific Linear state names may vary. The skill assumes simple state names such as `Todo`, `In Progress`, `Done`, and `Canceled`.
 - The included install script targets Codex-style local skill paths.
-- No licence is included yet. Add one before treating this as open-source software.
 
 ## Quick Start Prompt
 

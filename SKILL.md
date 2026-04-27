@@ -225,7 +225,11 @@ Use it for:
 - recording verification: `linear-agent verify MAS-123 --ledger <path> --verification "<check>: <result>"`
 - completing work: `linear-agent complete MAS-123 --ledger <path> --verification "<check>: <result>"`
 - handoff: `linear-agent handoff --ledger <path> --note "<handoff>"`
-- final project reconciliation: `linear-agent finalize --ledger <path> --verification "<Linear read-back and final checks>"`
+- final project reconciliation: `linear-agent finalize --ledger <path> --verification "<Linear read-back and final checks>" --dependencies "satisfied" --production-gates "satisfied" --sink-gates "not-applicable:<reason>"`
+
+`linear-agent init` refuses to overwrite an existing ledger unless `--force` is passed. Use `--force` only when replacing the prior ledger is intentional.
+
+`linear-agent finalize` requires explicit dependency, production, and sink/output gate outcomes. Use `satisfied` when the gate was completed, or `not-applicable:<reason>` when the gate genuinely does not apply.
 
 After running the wrapper, perform the printed Linear MCP actions using structured Linear tools, then verify with a read-back call. The wrapper is not a replacement for Linear itself; it is the deterministic transition path that keeps the ledger, comments, and issue status from drifting.
 
