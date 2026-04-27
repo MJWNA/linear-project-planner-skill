@@ -492,6 +492,7 @@ set +e
   --ledger "$ACTIVE_FINALIZE_LEDGER" \
   --agent "Codex" \
   --verification "should fail while row is active" \
+  --evidence "Linear read-back: MAS-777 still active" \
   --linear-reconciled \
   --dependencies "not-applicable:no blocking dependencies were required" \
   --production-gates "not-applicable:not a production application" \
@@ -512,6 +513,7 @@ assert_not_contains "$ACTIVE_FINALIZE_LEDGER" "- Overall status: completed"
   --ledger "$LEDGER" \
   --agent "Codex" \
   --verification "all Linear issues done; fixed evaluator passed" \
+  --evidence "Linear read-back: all issue rows Done; evaluator SCORE 130/130" \
   --linear-reconciled \
   --dependencies "not-applicable:no blocking dependencies were required" \
   --production-gates "not-applicable:not a production application" \
@@ -533,7 +535,7 @@ assert_contains "$LEDGER" "- [x] First issue chosen by dependency order"
 assert_contains "$LEDGER" "- [x] Follow-up issues created or linked"
 assert_contains "$LEDGER" "- [x] Final ledger reconciliation completed"
 assert_not_contains "$LEDGER" "|  |  |  |  |  |  |  |"
-assert_contains "$LEDGER" "Finalized ledger. Agent: Codex. Verification: all Linear issues done; fixed evaluator passed. Note: Project-level checklist reconciled."
+assert_contains "$LEDGER" "Finalized ledger. Agent: Codex. Verification: all Linear issues done; fixed evaluator passed. Evidence: Linear read-back: all issue rows Done; evaluator SCORE 130/130. Note: Project-level checklist reconciled."
 assert_contains "$TMP_DIR/finalize.out" "Required Linear MCP actions"
 assert_contains "$TMP_DIR/finalize.out" "_save_comment(issueId=\"<operating-guide-or-final-verification-issue>\""
 assert_contains "$TMP_DIR/finalize.out" "Verify with Linear project read-back"
@@ -543,6 +545,7 @@ set +e
   --ledger "$LEDGER" \
   --agent "Codex" \
   --verification "should fail without explicit gates" \
+  --evidence "Linear read-back: all issue rows Done" \
   --linear-reconciled \
   --dependencies "not-applicable:no blocking dependencies were required" \
   >"$TMP_DIR/finalize-missing-gates.out" 2>&1
@@ -559,7 +562,27 @@ set +e
 "$BIN" finalize \
   --ledger "$LEDGER" \
   --agent "Codex" \
+  --verification "should fail without evidence" \
+  --linear-reconciled \
+  --dependencies "not-applicable:no blocking dependencies were required" \
+  --production-gates "not-applicable:not a production application" \
+  --sink-gates "not-applicable:no sync or output sink in scope" \
+  >"$TMP_DIR/finalize-missing-evidence.out" 2>&1
+missing_evidence_rc=$?
+set -e
+
+if [ "$missing_evidence_rc" -eq 0 ]; then
+  echo "Expected finalize without --evidence to fail" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/finalize-missing-evidence.out" "finalize requires --evidence"
+
+set +e
+"$BIN" finalize \
+  --ledger "$LEDGER" \
+  --agent "Codex" \
   --verification "should fail without Linear reconciliation" \
+  --evidence "Linear read-back: all issue rows Done" \
   --dependencies "not-applicable:no blocking dependencies were required" \
   --production-gates "not-applicable:not a production application" \
   --sink-gates "not-applicable:no sync or output sink in scope" \

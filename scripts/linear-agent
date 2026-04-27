@@ -3,7 +3,7 @@ set -euo pipefail
 
 COMMAND=${1:-}
 if [ -z "$COMMAND" ]; then
-  echo "Usage: linear-agent <init|start|block|verify|complete|handoff|finalize> [args]" >&2
+  echo "Usage: linear-agent <init|start|block|verify|complete|handoff|reconcile|finalize> [args]" >&2
   exit 2
 fi
 shift
@@ -31,7 +31,7 @@ Usage:
   linear-agent verify ISSUE --ledger PATH [--agent NAME] [--verification TEXT] [--note TEXT]
   linear-agent complete ISSUE --ledger PATH [--agent NAME] --verification TEXT [--note TEXT]
   linear-agent handoff --ledger PATH [--note TEXT] [--next TEXT]
-  linear-agent finalize --ledger PATH [--agent NAME] --verification TEXT --linear-reconciled --dependencies VALUE --production-gates VALUE --sink-gates VALUE [--note TEXT]
+  linear-agent finalize --ledger PATH [--agent NAME] --verification TEXT --evidence TEXT --linear-reconciled --dependencies VALUE --production-gates VALUE --sink-gates VALUE [--note TEXT]
   linear-agent reconcile --ledger PATH
 
 This wrapper updates the companion execution ledger and prints the Linear MCP
@@ -189,102 +189,38 @@ existing_worktree() {
   local file=$1
   local issue=$2
 
-  ISSUE="$issue" perl -ne '
-    chomp;
-    my $issue = $ENV{"ISSUE"};
-    next unless /^\|\s*\Q$issue\E\s*\|/;
-
-    my @cells;
-    my $current = "";
-    my $escaped = 0;
-    for my $char (split //) {
-      if ($escaped) {
-        $current .= $char;
-        $escaped = 0;
-        next;
-      }
-      if ($char eq "\\") {
-        $escaped = 1;
-        next;
-      }
-      if ($char eq "|") {
-        push @cells, $current;
-        $current = "";
-        next;
-      }
-      $current .= $char;
-    }
-    push @cells, $current;
-
-    my $value = $cells[5] // "";
-    $value =~ s/^\s+|\s+$//g;
-    $value =~ s/<br>/\n/g;
-    print $value;
-    exit;
-  ' "$file"
+  PYTHONPATH="$SKILL_DIR/lib${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 -m linear_agent.ledger existing-worktree \
+      --ledger "$file" \
+      --issue "$issue"
 }
 
 ledger_issue_rows() {
   local file=$1
 
-  perl -ne '
-    BEGIN { $in_table = 0; }
-    chomp;
-    if ($_ eq "## Issue Progress") {
-      $in_table = 1;
-      next;
-    }
-    last if $in_table && /^## /;
-    next unless $in_table && /^\|/;
-    next if /^\|\s*(Issue|---)\s*\|/;
+  PYTHONPATH="$SKILL_DIR/lib${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 - "$file" <<'PY'
+from pathlib import Path
+from linear_agent.ledger import parse_issue_rows
+import sys
 
-    my @cells;
-    my $current = "";
-    my $escaped = 0;
-    my $content = $_;
-    $content =~ s/^\|//;
-    $content =~ s/\|$//;
-    for my $char (split //, $content) {
-      if ($escaped) {
-        $current .= $char;
-        $escaped = 0;
-        next;
-      }
-      if ($char eq "\\") {
-        $escaped = 1;
-        next;
-      }
-      if ($char eq "|") {
-        $current =~ s/^\s+|\s+$//g;
-        $current =~ s/<br>/\n/g;
-        push @cells, $current;
-        $current = "";
-        next;
-      }
-      $current .= $char;
-    }
-    $current =~ s/^\s+|\s+$//g;
-    $current =~ s/<br>/\n/g;
-    push @cells, $current;
-    next if @cells < 7 || $cells[0] eq "";
-    print join("\t", @cells[0, 1, 2]), "\n";
-  ' "$file"
+for row in parse_issue_rows(Path(sys.argv[1])):
+    print("\t".join([row.issue, row.linear_status, row.agent_state]))
+PY
 }
 
 issue_row_count() {
   local file=$1
 
-  ledger_issue_rows "$file" | wc -l | tr -d '[:space:]'
+  PYTHONPATH="$SKILL_DIR/lib${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 -m linear_agent.ledger issue-row-count --ledger "$file"
 }
 
 unfinished_issue_rows() {
   local file=$1
 
-  ledger_issue_rows "$file" | awk -F '\t' '
-    $2 != "Done" && $2 != "Completed" {
-      print "- " $1 " is " $2 " (" $3 ")"
-    }
-  '
+  PYTHONPATH="$SKILL_DIR/lib${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 -m linear_agent.ledger unfinished-issue-rows --ledger "$file"
 }
 
 upsert_issue_row() {
@@ -387,6 +323,24 @@ $comment
 EOF
 }
 
+print_direct_apply_summary() {
+  local action=$1
+  local issue=$2
+  local state=$3
+  local comment=$4
+
+  cat <<EOF
+Direct Linear apply requested:
+- Issue: $issue
+- Target state: $state
+- Ledger: $LEDGER
+- Agent: $AGENT
+- Worktree: ${WORKTREE:-n/a}
+- Action: $action
+- Comment preview: $comment
+EOF
+}
+
 apply_linear_transition() {
   local action=$1
   local issue=$2
@@ -408,6 +362,7 @@ parse_common_transition_args() {
   NOTE=${NOTE:-}
   NEXT=${NEXT:-}
   VERIFICATION=${VERIFICATION:-}
+  EVIDENCE=${EVIDENCE:-}
   DEPENDENCIES=${DEPENDENCIES:-}
   PRODUCTION_GATES=${PRODUCTION_GATES:-}
   SINK_GATES=${SINK_GATES:-}
@@ -423,6 +378,7 @@ parse_common_transition_args() {
       --note) need_value "$1" "${2:-}"; NOTE=$2; shift 2 ;;
       --next) need_value "$1" "${2:-}"; NEXT=$2; shift 2 ;;
       --verification) need_value "$1" "${2:-}"; VERIFICATION=$2; shift 2 ;;
+      --evidence) need_value "$1" "${2:-}"; EVIDENCE=$2; shift 2 ;;
       --dependencies) need_value "$1" "${2:-}"; DEPENDENCIES=$2; shift 2 ;;
       --production-gates) need_value "$1" "${2:-}"; PRODUCTION_GATES=$2; shift 2 ;;
       --sink-gates) need_value "$1" "${2:-}"; SINK_GATES=$2; shift 2 ;;
@@ -561,6 +517,7 @@ transition_issue() {
   esac
 
   if [ "$APPLY_LINEAR" = "1" ]; then
+    print_direct_apply_summary "$action" "$issue" "$linear_status" "$comment"
     apply_linear_transition "$action" "$issue" "$linear_status" "$comment" || {
       append_activity "$LEDGER" "$issue $action failed before ledger confirmation. Intended Linear state: $linear_status."
       exit 1
@@ -624,6 +581,7 @@ apply_gate_item() {
 finalize() {
   parse_common_transition_args "$@"
   [ -n "$VERIFICATION" ] || { echo "finalize requires --verification" >&2; exit 2; }
+  [ -n "$EVIDENCE" ] || { echo "finalize requires --evidence with a Linear read-back summary, evidence file, or release/CI link" >&2; exit 2; }
   [ "$LINEAR_RECONCILED" -eq 1 ] || { echo "finalize requires --linear-reconciled after a successful Linear/project read-back" >&2; exit 2; }
   [ -n "$DEPENDENCIES" ] || { echo "finalize requires --dependencies" >&2; exit 2; }
   [ -n "$PRODUCTION_GATES" ] || { echo "finalize requires --production-gates" >&2; exit 2; }
@@ -646,7 +604,7 @@ finalize() {
     exit 1
   fi
 
-  comment="Finalized ledger. Agent: $AGENT. Verification: $VERIFICATION. Note: ${NOTE:-none}."
+  comment="Finalized ledger. Agent: $AGENT. Verification: $VERIFICATION. Evidence: $EVIDENCE. Note: ${NOTE:-none}."
 
   ensure_checklist_legend "$LEDGER"
   ensure_final_reconciliation_item "$LEDGER"

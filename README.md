@@ -70,6 +70,27 @@ That third state matters. Without it, future agents cannot tell the difference b
 
 ## Technical Workflow
 
+### Quick Path
+
+The shortest safe operating flow is:
+
+1. Read local project rules and create or open the companion ledger.
+2. Create the Linear project with guide issues, parent workstreams, child issues, labels, dependencies, and sparse links.
+3. Claim one issue at a time with `linear-agent start`; use separate worktrees for independent write-capable agents.
+4. Verify each issue before `linear-agent complete`, then mirror the Linear status/comment and read it back.
+5. Run the frozen evaluator or binary validation loop, reconcile Linear, and finalize only with explicit evidence.
+
+### Reference Map
+
+The skill keeps the front-door instructions compact and moves deeper contracts into focused references:
+
+- `SKILL.md`: project design and execution contract.
+- `templates/EXECUTION.md`: living ledger template.
+- `scripts/linear-agent`: shell CLI for ledger transitions, direct Linear mode, reconciliation, and finalization.
+- `references/command-schemas.md`: proposed `linear_project.*` structured tool contract.
+- `references/runtime-state.md`: model/runtime and Responses API state guidance.
+- `tests/fixtures/linear_issue_templates.md`: expected issue and final comment shapes for agent-output evaluation.
+
 ### 1. Plan The Project
 
 When asked to create or execute a Linear project, the agent reads this skill and builds a structured plan:
@@ -233,7 +254,7 @@ The final Linear tasks should be explicit enough that a future agent can execute
 - `Create follow-up tasks for non-green or inconclusive checks`
 - `Re-run evaluator until stable across repeated passes`
 
-For this skill, a valid final loop means the frozen evaluator prints `SCORE 100/100`, shell and Python regression tests pass, `linear-agent reconcile` has no drift for real issue rows, and any blocked Linear behavior is recorded as blocked rather than completed.
+For this skill, a valid final loop means the frozen evaluator prints `SCORE 130/130`, shell and Python regression tests pass, `linear-agent reconcile` has no drift for real issue rows, and any blocked Linear behavior is recorded as blocked rather than completed.
 
 ### 6. Handoff Or Finalize
 
@@ -252,13 +273,14 @@ For completed projects:
 linear-agent finalize \
   --ledger /path/to/EXECUTION.md \
   --verification "Linear read-back complete; all checks pass" \
+  --evidence "Linear read-back: all rows Done; CI passed" \
   --linear-reconciled \
   --dependencies "not-applicable:no blocking dependencies were required" \
   --production-gates "not-applicable:not a production application" \
   --sink-gates "not-applicable:no sync or output sink in scope"
 ```
 
-`finalize` updates the ledger to a no-active-issue state, marks completed checklist items, removes placeholder progress rows, and prints the final Linear comment/read-back actions. It requires explicit dependency, production, and sink/output gate outcomes so an agent cannot silently mark risky project gates as not applicable.
+`finalize` updates the ledger to a no-active-issue state, marks completed checklist items, removes placeholder progress rows, and prints the final Linear comment/read-back actions. It requires explicit dependency, production, sink/output gate outcomes, and evidence so an agent cannot silently mark risky project gates as not applicable or completed without an inspectable read-back.
 
 `finalize` also refuses to run when the Issue Progress table is empty or any issue row is still not `Done` or `Completed`. A canceled, missing, blocked, unstarted, or In Progress issue is not project completion; it needs a blocker note, a follow-up issue, or a human decision before the project can be finalized.
 
@@ -356,6 +378,7 @@ linear-agent handoff \
 linear-agent finalize \
   --ledger /path/to/EXECUTION.md \
   --verification "No To Do/In Progress issues remain; final checks pass" \
+  --evidence "Linear read-back: no To Do/In Progress issues; evaluator passed" \
   --linear-reconciled \
   --dependencies "satisfied" \
   --production-gates "satisfied" \
@@ -363,6 +386,15 @@ linear-agent finalize \
 ```
 
 Gate values must be either `satisfied` or `not-applicable:<reason>`.
+
+### Responses API State
+
+When this skill is used from a custom OpenAI API client, keep the agent state chain explicit rather than relying only on chat history:
+
+- Preserve `previous_response_id` between turns so the model can continue the same reasoning/tool-use chain.
+- Replay required output items when a tool result needs to be resumed after compaction or an external workflow pause.
+- Store the current `phase`, active issue, active worktree, ledger path, and last verification result outside the prompt so an API restart can recover cleanly.
+- Treat the companion ledger as the durable compaction summary: if API state and the ledger disagree, reconcile against Linear and record the outcome before continuing.
 
 ## Why It Matters
 
@@ -401,11 +433,17 @@ It is especially useful for:
 ├── install.sh
 ├── lib/
 │   └── linear_agent/
+│       ├── graphql.py
+│       └── ledger.py
+├── references/
+│   ├── command-schemas.md
+│   └── runtime-state.md
 ├── scripts/
 │   └── linear-agent
 ├── templates/
 │   └── EXECUTION.md
 ├── tests/
+│   ├── fixtures/
 │   ├── test-linear-agent.sh
 │   └── test_linear_agent_graphql.py
 └── tools/
@@ -469,7 +507,7 @@ python3 -m unittest tests/test_linear_agent_graphql.py
 python3 tools/linear-agent-evaluator.py
 ```
 
-The evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 100/100`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
+The evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 130/130`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
 
 Run syntax checks:
 
@@ -477,7 +515,7 @@ Run syntax checks:
 bash -n install.sh
 bash -n scripts/linear-agent
 bash -n tests/test-linear-agent.sh
-python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/graphql.py tools/linear-agent-evaluator.py
+python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/ledger.py lib/linear_agent/graphql.py tools/linear-agent-evaluator.py
 ```
 
 Optional, if installed locally:
@@ -513,7 +551,7 @@ Do not commit secrets, credentials, private Linear workspace exports, customer d
 
 ## Status
 
-This repo is maintained as a public Codex skill utility. The current implementation is shell and Markdown based, with CI covering syntax, YAML metadata, regression tests, and whitespace checks.
+This repo is maintained as a public Codex skill utility. The current implementation is shell, Python, and Markdown based, with CI covering syntax, YAML metadata, regression tests, fake Linear GraphQL tests, evaluator checks, and whitespace checks.
 
 ## License
 

@@ -6,6 +6,17 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
+## 2.1.0 - 2026-04-28
+
+- Added compact Quick Path and Reference Map sections to reduce active context while preserving safety rules.
+- Added structured `linear_project.*` command schema reference docs for future function-tool or MCP surfaces.
+- Added runtime/model guidance for coordinator, read-only worker, implementation worker, and Responses API state continuity.
+- Added `lib/linear_agent/ledger.py` and moved Markdown ledger row parsing into typed Python shared by the shell wrapper and GraphQL reconciler.
+- Hardened direct Linear mode with a planned state-change summary before GraphQL writes.
+- Hardened `linear-agent finalize` to require explicit `--evidence` and record it in the final ledger comment.
+- Expanded evaluator coverage for structured tool contracts, runtime state guidance, and generated Linear issue/final-comment fixtures.
+- Raised the frozen evaluator release target from `SCORE 100/100` to `SCORE 130/130`.
+
 ## 2.0.1 - 2026-04-28
 
 - Added sparse link graph guidance for high-signal task, docs, PR, ledger, and verification references.

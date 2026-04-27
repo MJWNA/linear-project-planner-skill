@@ -28,6 +28,28 @@ Create an execution system, not a flat todo list. Every project should tell a fu
 - what business outputs must not change
 - where durable cross-session execution memory lives
 
+## Quick Path
+
+When speed matters, follow this shortest safe path:
+
+1. Read the local project rules and create or open the companion ledger.
+2. Create the Linear project with guide issues, parent workstreams, child issues, labels, dependencies, and sparse reference links.
+3. Claim one issue at a time with `linear-agent start`; dispatch parallel agents only for independent work with separate write scopes and worktrees.
+4. Use Context7 or official docs for framework, SDK, API, deployment, auth, database, or validation decisions.
+5. Verify every issue before `linear-agent complete`, then mirror the status and comment in Linear and read it back.
+6. Run the frozen evaluator or binary verification loop at the end, record the score, reconcile Linear, and only then finalize with explicit evidence.
+
+## Reference Map
+
+Load deeper references only when the current task needs them:
+
+- `templates/EXECUTION.md`: companion ledger shape and checklist semantics.
+- `scripts/linear-agent`: local transition wrapper, direct Linear mode, reconciliation, and finalization guards.
+- `lib/linear_agent/ledger.py`: typed Markdown ledger parsing used by the shell wrapper and GraphQL reconciler.
+- `references/command-schemas.md`: structured `linear_project.*` command contract for future function/MCP tool layers.
+- `references/runtime-state.md`: model/runtime guidance, Responses API state continuity, and compaction recovery.
+- `tests/fixtures/linear_issue_templates.md`: expected issue and completion-comment output shape.
+
 ## First Pass
 
 Before creating issues:
@@ -331,11 +353,11 @@ Use it for:
 - completing work: `linear-agent complete MAS-123 --ledger <path> --verification "<check>: <result>"`
 - handoff: `linear-agent handoff --ledger <path> --note "<handoff>"`
 - reconciliation: `linear-agent reconcile --ledger <path>`
-- final project reconciliation: `linear-agent finalize --ledger <path> --verification "<Linear read-back and final checks>" --dependencies "satisfied" --production-gates "satisfied" --sink-gates "not-applicable:<reason>"`
+- final project reconciliation: `linear-agent finalize --ledger <path> --verification "<Linear read-back and final checks>" --evidence "<read-back summary, evidence file, CI link, or release link>" --linear-reconciled --dependencies "satisfied" --production-gates "satisfied" --sink-gates "not-applicable:<reason>"`
 
 `linear-agent init` refuses to overwrite an existing ledger unless `--force` is passed. Use `--force` only when replacing the prior ledger is intentional.
 
-`linear-agent finalize` requires explicit dependency, production, and sink/output gate outcomes. Use `satisfied` when the gate was completed, or `not-applicable:<reason>` when the gate genuinely does not apply.
+`linear-agent finalize` requires explicit dependency, production, sink/output gate outcomes, and `--evidence`. Use `satisfied` when the gate was completed, or `not-applicable:<reason>` when the gate genuinely does not apply. Evidence should point to a Linear read-back summary, CI result, release link, evaluator output, or local artifact that proves finalization is grounded in something inspectable.
 
 `linear-agent finalize` must fail closed. It should only be used when the Issue Progress table contains real completed issue rows and every row is `Done` or `Completed`. Empty tables, `Todo`, `In Progress`, `Missing in Linear`, `Canceled`, blocked rows, or reconciliation drift mean the correct action is to record the blocker or follow-up, not finalize the project.
 

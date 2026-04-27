@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .ledger import parse_issue_rows
+
 
 DEFAULT_API_URL = "https://api.linear.app/graphql"
 
@@ -350,68 +352,9 @@ def apply_transition(issue_id: str, state_name: str, comment: str, action: str) 
     )
 
 
-def split_markdown_row(line: str) -> list[str]:
-    cells: list[str] = []
-    current: list[str] = []
-    escaped = False
-    content = line.strip()
-    if content.startswith("|"):
-        content = content[1:]
-    if content.endswith("|"):
-        content = content[:-1]
-    for char in content:
-        if escaped:
-            current.append(char)
-            escaped = False
-            continue
-        if char == "\\":
-            escaped = True
-            continue
-        if char == "|":
-            cells.append("".join(current).strip().replace("<br>", "\n"))
-            current = []
-            continue
-        current.append(char)
-    if escaped:
-        current.append("\\")
-    cells.append("".join(current).strip().replace("<br>", "\n"))
-    return cells
-
-
-def parse_ledger_rows(path: Path) -> list[dict[str, str]]:
-    rows: list[dict[str, str]] = []
-    in_table = False
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if line == "## Issue Progress":
-            in_table = True
-            continue
-        if in_table and line.startswith("## "):
-            break
-        if not in_table or not line.startswith("|"):
-            continue
-        if line.startswith("|---") or line.startswith("| Issue "):
-            continue
-        cells = split_markdown_row(line)
-        if len(cells) < 7 or not cells[0]:
-            continue
-        rows.append(
-            {
-                "issue": cells[0],
-                "linear_status": cells[1],
-                "agent_state": cells[2],
-                "agent": cells[3],
-                "worktree": cells[4],
-                "last_update": cells[5],
-                "verification": cells[6],
-            }
-        )
-    return rows
-
-
 def reconcile(ledger: Path) -> int:
     client = LinearClient.from_env()
-    rows = parse_ledger_rows(ledger)
+    rows = parse_issue_rows(ledger)
     if not rows:
         print("empty | ledger has no issue rows")
         print("Reconcile complete: 0 match, 0 mismatch")
@@ -420,28 +363,28 @@ def reconcile(ledger: Path) -> int:
     mismatches = 0
     for row in rows:
         try:
-            issue = client.issue(row["issue"])
+            issue = client.issue(row.issue)
             state = issue.get("state", {})
             observed = state.get("name", "")
         except LinearAgentError as exc:
             mismatches += 1
-            print(f"missing | {row['issue']} | {exc}")
+            print(f"missing | {row.issue} | {exc}")
             continue
-        expected_override = state_override(row["linear_status"])
+        expected_override = state_override(row.linear_status)
         if expected_override and state.get("id") == expected_override:
             print(
-                f"match | {row['issue']} | {observed} "
-                f"(ledger={row['linear_status']}, state-id override)"
+                f"match | {row.issue} | {observed} "
+                f"(ledger={row.linear_status}, state-id override)"
             )
             continue
-        if observed != row["linear_status"]:
+        if observed != row.linear_status:
             mismatches += 1
             print(
-                f"mismatch | {row['issue']} | ledger={row['linear_status']} | "
+                f"mismatch | {row.issue} | ledger={row.linear_status} | "
                 f"linear={observed}"
             )
         else:
-            print(f"match | {row['issue']} | {observed}")
+            print(f"match | {row.issue} | {observed}")
     print(f"Reconcile complete: {len(rows) - mismatches} match, {mismatches} mismatch")
     return 1 if mismatches else 0
 
