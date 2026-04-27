@@ -224,6 +224,69 @@ existing_worktree() {
   ' "$file"
 }
 
+ledger_issue_rows() {
+  local file=$1
+
+  perl -ne '
+    BEGIN { $in_table = 0; }
+    chomp;
+    if ($_ eq "## Issue Progress") {
+      $in_table = 1;
+      next;
+    }
+    last if $in_table && /^## /;
+    next unless $in_table && /^\|/;
+    next if /^\|\s*(Issue|---)\s*\|/;
+
+    my @cells;
+    my $current = "";
+    my $escaped = 0;
+    my $content = $_;
+    $content =~ s/^\|//;
+    $content =~ s/\|$//;
+    for my $char (split //, $content) {
+      if ($escaped) {
+        $current .= $char;
+        $escaped = 0;
+        next;
+      }
+      if ($char eq "\\") {
+        $escaped = 1;
+        next;
+      }
+      if ($char eq "|") {
+        $current =~ s/^\s+|\s+$//g;
+        $current =~ s/<br>/\n/g;
+        push @cells, $current;
+        $current = "";
+        next;
+      }
+      $current .= $char;
+    }
+    $current =~ s/^\s+|\s+$//g;
+    $current =~ s/<br>/\n/g;
+    push @cells, $current;
+    next if @cells < 7 || $cells[0] eq "";
+    print join("\t", @cells[0, 1, 2]), "\n";
+  ' "$file"
+}
+
+issue_row_count() {
+  local file=$1
+
+  ledger_issue_rows "$file" | wc -l | tr -d '[:space:]'
+}
+
+unfinished_issue_rows() {
+  local file=$1
+
+  ledger_issue_rows "$file" | awk -F '\t' '
+    $2 != "Done" && $2 != "Completed" {
+      print "- " $1 " is " $2 " (" $3 ")"
+    }
+  '
+}
+
 upsert_issue_row() {
   local file=$1
   local issue=$2
@@ -567,6 +630,21 @@ finalize() {
   [ -n "$SINK_GATES" ] || { echo "finalize requires --sink-gates" >&2; exit 2; }
 
   local comment
+  local row_count
+  local unfinished
+
+  row_count=$(issue_row_count "$LEDGER")
+  if [ "$row_count" -eq 0 ]; then
+    echo "finalize refuses an empty Issue Progress table; reconcile or record completed issue rows first" >&2
+    exit 1
+  fi
+
+  unfinished=$(unfinished_issue_rows "$LEDGER")
+  if [ -n "$unfinished" ]; then
+    echo "finalize refuses unfinished issue rows:" >&2
+    printf '%s\n' "$unfinished" >&2
+    exit 1
+  fi
 
   comment="Finalized ledger. Agent: $AGENT. Verification: $VERIFICATION. Note: ${NOTE:-none}."
 
@@ -610,7 +688,7 @@ finalize() {
 
 agent_state_for_linear_status() {
   case "$1" in
-    Done|Completed|Canceled|Cancelled) printf 'agent:pr-ready' ;;
+    Done|Completed) printf 'agent:pr-ready' ;;
     *) printf 'agent:blocked' ;;
   esac
 }

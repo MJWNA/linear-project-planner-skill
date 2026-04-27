@@ -120,6 +120,16 @@ The skill now treats links as context compression. A good Linear project should 
 
 The point is not to link everything. Normal child issues should stay sparse, usually 3-7 high-signal links. Guide issues, verification matrices, and final release gates can carry more. Links should compress context, not clutter tasks.
 
+If Linear rejects issue creation or relationships, do not silently downgrade the graph to memory. Freeze the intended graph in the companion ledger and, where possible, the Linear project description:
+
+- list the guide, parent, and child issues that still need to be created
+- record intended `blocks`, `blockedBy`, and `relatedTo` edges
+- store high-signal URLs for docs, source files, commits, PRs, evaluator commands, and ledger anchors
+- mark relationship creation as blocked or not applicable with a reason
+- retry the Linear graph once the workspace/tooling blocker is resolved
+
+This keeps the project recoverable without pretending the board is more complete than it is.
+
 ### Parallel-Agent Operating Model
 
 For agent-heavy projects, the coordinator should not treat "parallel-safe" as a nice-to-have label. If there are two or more independent, unblocked child issues with separate write scopes, the coordinator should dispatch parallel sub-agents and give each one a clear lane.
@@ -214,6 +224,17 @@ python3 tools/linear-agent-evaluator.py
 
 For other projects, the evaluator might be tests, lint/typecheck counts, build success, API contract checks, output snapshots, accessibility scores, repo readiness, or `linear-agent reconcile` drift results. The important part is that the evaluator is binary or numeric and does not move during the final loop.
 
+The final Linear tasks should be explicit enough that a future agent can execute them without inventing the loop:
+
+- `Freeze evaluator command and success threshold`
+- `Run baseline evaluator and record score`
+- `Probe failure modes with focused experiments`
+- `Keep only changes that preserve correctness`
+- `Create follow-up tasks for non-green or inconclusive checks`
+- `Re-run evaluator until stable across repeated passes`
+
+For this skill, a valid final loop means the frozen evaluator prints `SCORE 100/100`, shell and Python regression tests pass, `linear-agent reconcile` has no drift for real issue rows, and any blocked Linear behavior is recorded as blocked rather than completed.
+
 ### 6. Handoff Or Finalize
 
 For unfinished work:
@@ -238,6 +259,8 @@ linear-agent finalize \
 ```
 
 `finalize` updates the ledger to a no-active-issue state, marks completed checklist items, removes placeholder progress rows, and prints the final Linear comment/read-back actions. It requires explicit dependency, production, and sink/output gate outcomes so an agent cannot silently mark risky project gates as not applicable.
+
+`finalize` also refuses to run when the Issue Progress table is empty or any issue row is still not `Done` or `Completed`. A canceled, missing, blocked, unstarted, or In Progress issue is not project completion; it needs a blocker note, a follow-up issue, or a human decision before the project can be finalized.
 
 ## Commands
 
