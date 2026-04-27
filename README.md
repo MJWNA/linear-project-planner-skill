@@ -101,6 +101,46 @@ Each child issue should explain:
 
 The result is a backlog that an agent can actually execute without needing to rediscover the whole project.
 
+### Parallel-Agent Operating Model
+
+For agent-heavy projects, the coordinator should not treat "parallel-safe" as a nice-to-have label. If there are two or more independent, unblocked child issues with separate write scopes, the coordinator should dispatch parallel sub-agents and give each one a clear lane.
+
+In plain English:
+
+- The coordinator breaks the project into child issues that can be owned independently.
+- Each write-capable agent gets one Linear issue, one branch, one git worktree, and one explicit write set.
+- The write set names the files, folders, modules, migrations, scripts, or docs the agent may change.
+- Agents must not edit outside their owned scope, revert other agents' work, or "clean up" shared files unless the coordinator gives that ownership explicitly.
+- If two issues need the same file or helper, they are no longer parallel-safe. Mark them `serial-required` or `overlap-zone` and reconcile the order first.
+- Read-only research agents can share a worktree, but implementation agents should use separate worktrees.
+- The coordinator merges branches deliberately after each issue is verified and after any shared contracts are reconciled.
+
+Worktrees matter because git branches alone do not protect the working directory. Two agents editing the same checkout can overwrite each other's files, run formatters across unrelated changes, or accidentally revert work they did not create. Separate worktrees give each agent its own filesystem checkout, while still keeping the branches connected to the same repository for review and merge.
+
+Example split across child issues:
+
+```txt
+Parent: Workstream: Linear Planner Policy Docs
+
+MAS-224: Make parallel dispatch mandatory in SKILL.md
+- Agent: Codex A
+- Branch: codex/mas-224-parallel-dispatch
+- Worktree: ../linear-planner-mas-224
+- Owned write set: SKILL.md
+- Do not edit: README.md, scripts/**, templates/**, tests/**, CI files
+- Verification: markdown review plus targeted diff check
+
+MAS-228: Document the parallel-agent operating model in README.md
+- Agent: Codex B
+- Branch: codex/mas-228-readme-operating-model
+- Worktree: ../linear-planner-mas-228
+- Owned write set: README.md
+- Do not edit: SKILL.md, scripts/**, templates/**, tests/**, CI files
+- Verification: markdown review plus targeted diff check
+```
+
+Those two issues can run in parallel because each agent writes a different file and neither issue depends on the other's implementation. If both issues needed to edit `SKILL.md`, the coordinator would either split the ownership by section with extra care or make the work serial.
+
 ### 3. Execute With `linear-agent`
 
 The wrapper updates the local ledger first and prints the Linear MCP actions the agent still needs to perform. This keeps the local execution memory and Linear board from drifting apart.

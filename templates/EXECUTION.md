@@ -52,6 +52,14 @@ Checklist marker legend: `[ ]` pending, `[x]` complete, `[~]` not applicable wit
 - [ ] Final verification/release gate completed
 - [ ] Final ledger reconciliation completed
 
+## Parallel Agent Allocation
+
+Fill this section before dispatching parallel write-capable agents. Separate git worktrees are required unless the work is read-only.
+
+| Issue | Agent | Branch | Worktree | Ownership Boundary | Status | Merge/Reconcile Notes |
+|---|---|---|---|---|---|---|
+|  |  |  |  |  |  |  |
+
 ## Issue Progress
 
 | Issue | Linear Status | Agent State | Owner/Agent | Worktree | Last Update | Verification |

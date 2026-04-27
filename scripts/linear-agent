@@ -26,7 +26,7 @@ usage() {
   cat >"$output" <<'EOF'
 Usage:
   linear-agent init --ledger PATH --project NAME --prompt TEXT [--linear-project NAME] [--repo PATH] [--base-branch BRANCH] [--force]
-  linear-agent start ISSUE --ledger PATH [--agent NAME] [--worktree PATH] [--note TEXT]
+  linear-agent start ISSUE --ledger PATH [--agent NAME] [--worktree PATH] [--note TEXT] [--parallel-write]
   linear-agent block ISSUE --ledger PATH [--agent NAME] [--note TEXT] [--next TEXT]
   linear-agent verify ISSUE --ledger PATH [--agent NAME] [--verification TEXT] [--note TEXT]
   linear-agent complete ISSUE --ledger PATH [--agent NAME] --verification TEXT [--note TEXT]
@@ -331,6 +331,7 @@ parse_common_transition_args() {
   DEPENDENCIES=${DEPENDENCIES:-}
   PRODUCTION_GATES=${PRODUCTION_GATES:-}
   SINK_GATES=${SINK_GATES:-}
+  PARALLEL_WRITE=0
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -343,6 +344,7 @@ parse_common_transition_args() {
       --dependencies) need_value "$1" "${2:-}"; DEPENDENCIES=$2; shift 2 ;;
       --production-gates) need_value "$1" "${2:-}"; PRODUCTION_GATES=$2; shift 2 ;;
       --sink-gates) need_value "$1" "${2:-}"; SINK_GATES=$2; shift 2 ;;
+      --parallel-write) PARALLEL_WRITE=1; shift ;;
       *) echo "Unknown option: $1" >&2; usage ;;
     esac
   done
@@ -421,12 +423,16 @@ transition_issue() {
   if [ -z "$WORKTREE" ]; then
     WORKTREE=$current_worktree
   fi
+  if [ "$action" = "start" ] && [ "$PARALLEL_WRITE" -eq 1 ] && [ -z "$WORKTREE" ]; then
+    echo "start --parallel-write requires --worktree" >&2
+    exit 2
+  fi
 
   case "$action" in
     start)
       linear_status="In Progress"
       agent_state="agent:executing"
-      comment="Started work. Agent: $AGENT. Worktree: ${WORKTREE:-n/a}. Note: ${NOTE:-claimed for execution}."
+      comment="Started work. Agent: $AGENT. Worktree: ${WORKTREE:-n/a}. Parallel write: $([ "$PARALLEL_WRITE" -eq 1 ] && printf yes || printf no). Note: ${NOTE:-claimed for execution}."
       replace_line "$LEDGER" "- Overall status:" "- Overall status: executing"
       replace_line "$LEDGER" "- Active issue:" "- Active issue: $issue"
       replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"

@@ -33,6 +33,12 @@ assert_not_contains() {
 
 LEDGER="$TMP_DIR/EXECUTION.md"
 
+assert_contains "$SKILL_DIR/SKILL.md" "## Mandatory Parallel Dispatch"
+assert_contains "$SKILL_DIR/SKILL.md" "When there are 2+ independent, dependency-ready workstreams with disjoint write scopes"
+assert_contains "$SKILL_DIR/SKILL.md" "Parallel write-capable agents must not share one working tree"
+assert_contains "$SKILL_DIR/README.md" "### Parallel-Agent Operating Model"
+assert_contains "$SKILL_DIR/README.md" "Each write-capable agent gets one Linear issue, one branch, one git worktree, and one explicit write set"
+
 "$BIN" init \
   --ledger "$LEDGER" \
   --project "Agent Runtime Hardening" \
@@ -55,6 +61,9 @@ assert_contains "$LEDGER" "## Risks"
 assert_contains "$LEDGER" "## Handoff Notes"
 assert_contains "$LEDGER" "Checklist marker legend:"
 assert_contains "$LEDGER" "- [ ] Final ledger reconciliation completed"
+assert_contains "$LEDGER" "## Parallel Agent Allocation"
+assert_contains "$LEDGER" "Separate git worktrees are required unless the work is read-only"
+assert_contains "$LEDGER" "| Issue | Agent | Branch | Worktree | Ownership Boundary | Status | Merge/Reconcile Notes |"
 if [ "$(grep -Fc -- "- TBD" "$LEDGER")" -lt 4 ]; then
   echo "Expected non-activity section placeholders to remain after init" >&2
   cat "$LEDGER" >&2
@@ -103,10 +112,26 @@ if [ "$missing_template_rc" -eq 0 ]; then
 fi
 assert_contains "$TMP_DIR/init-missing-template.out" "Template not found"
 
+set +e
+"$BIN" start MAS-122 \
+  --ledger "$LEDGER" \
+  --agent "Codex" \
+  --parallel-write \
+  >"$TMP_DIR/start-parallel-missing-worktree.out" 2>&1
+parallel_missing_worktree_rc=$?
+set -e
+
+if [ "$parallel_missing_worktree_rc" -eq 0 ]; then
+  echo "Expected parallel write start without --worktree to fail" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/start-parallel-missing-worktree.out" "start --parallel-write requires --worktree"
+
 "$BIN" start MAS-123 \
   --ledger "$LEDGER" \
   --agent "Codex" \
   --worktree "/tmp/example|worktree" \
+  --parallel-write \
   --note $'Claimed for implementation with "quoted" note\nand pipe | value' \
   >"$TMP_DIR/start.out"
 
@@ -121,6 +146,7 @@ assert_contains "$TMP_DIR/start.out" "_save_issue(id=\"MAS-123\", state=\"In Pro
 assert_contains "$TMP_DIR/start.out" "_save_comment(issueId=\"MAS-123\", body=<comment body below>)"
 assert_contains "$TMP_DIR/start.out" "Comment body:"
 assert_contains "$TMP_DIR/start.out" "Claimed for implementation with \"quoted\" note"
+assert_contains "$TMP_DIR/start.out" "Parallel write: yes"
 assert_contains "$TMP_DIR/start.out" "Verify with _list_issues"
 
 "$BIN" block MAS-124 \

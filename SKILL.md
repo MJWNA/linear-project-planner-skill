@@ -279,6 +279,31 @@ Use dependencies when:
 
 Use `parallel-safe` only when write scopes and behavior contracts do not overlap.
 
+## Mandatory Parallel Dispatch
+
+When there are 2+ independent, dependency-ready workstreams with disjoint write scopes, the coordinator must dispatch parallel sub-agents instead of serialising the work in one session.
+
+This is mandatory when all of these are true:
+
+- at least two child issues are unblocked and `agent-ready`
+- the issues do not depend on each other's implementation or discovery
+- the owned files, modules, data contracts, migrations, or docs are disjoint
+- verification for one issue does not require unmerged code from the other issue
+- each agent can work in its own branch/worktree or the work is read-only
+
+Do not dispatch parallel write-capable agents when ownership is unclear, when two issues may edit the same file/module, when one issue changes a shared helper/state machine used by another, or when a production/sink-output gate must be resolved first. Mark those issues `serial-required` or `overlap-zone` until the boundary is safe.
+
+Before dispatching, the coordinator must define:
+
+- the Linear issue each agent owns
+- the branch and worktree path for each write-capable agent
+- the exact owned write set: files, directories, modules, routes, scripts, migrations, or docs
+- explicit non-owned areas the agent must not edit
+- expected verification commands or checks
+- reconciliation order and merge/read-back expectations
+
+Parallel dispatch instructions must tell agents they are not alone in the codebase, must not revert other agents' changes, must stop and comment if ownership overlaps, and must leave completion comments with changed files, checks, residual risks, and follow-ups.
+
 ## Context7 Expectations
 
 Use Context7 and direct docs links for:
@@ -326,13 +351,13 @@ When working through an agent-ready Linear project:
   - follow-up issues created
 - If the work changes issue scope, update the issue description or add a clear comment before continuing.
 - If work reveals a sink/output behavior risk, stop and attach the risk to the issue before changing output behavior.
-- For parallel agents, each agent must own a disjoint write scope or explicitly coordinate through issue comments.
+- For parallel agents, each agent must own a disjoint write scope before write work starts. If scopes overlap, stop and reconcile ownership through the coordinator and issue comments before continuing.
 - Do not rely on parent auto-close for agent projects that need human review. Parents/workstreams should remain open until the final verification/release gate is complete.
 - Update the companion execution ledger at each state transition so context compaction does not erase the working todo state.
 
 ## Parallel Code Execution With Worktrees
 
-When executing code changes with multiple agents in the same repository, isolate write scopes with Git worktrees unless the agent runtime already provides separate forked workspaces.
+When executing code changes with multiple agents in the same repository, isolate write scopes with Git worktrees unless the work is read-only or the agent runtime already provides separate forked workspaces. Parallel write-capable agents must not share one working tree.
 
 Use this pattern:
 
@@ -341,7 +366,8 @@ Use this pattern:
 3. Use a branch name tied to the issue, e.g. `codex/mas-50-ticket-escalation-cron`.
 4. Assign each agent a clear worktree path and owned file/module scope.
 5. Tell agents they are not alone in the codebase and must not revert unrelated changes.
-6. Merge/integrate branches deliberately after review and verification.
+6. Record the worktree path and owned write set in Linear and the companion ledger.
+7. Merge/integrate branches deliberately after review, verification, and coordinator reconciliation.
 
 Example:
 
@@ -352,7 +378,15 @@ git worktree add ../smd-mas-59 -b codex/mas-59-sync-timeouts codex/full-codebase
 
 Avoid running two implementation agents in the same working tree when both can edit files. Use one shared worktree only for read-only audit agents or when a single coordinator is applying all patches.
 
-Do not delete worktrees until their branches are merged, abandoned intentionally, or handed off with clear notes. Record worktree paths in Linear progress comments when parallel execution starts.
+The coordinator owns worktree safety:
+
+- no overlapping write sets
+- no agent reverts or rewrites another agent's changes
+- no broad cleanup outside the owned issue scope
+- no merge until each branch has passed its issue verification
+- reconcile conflicts, shared contracts, and final integration deliberately before merge
+
+Do not delete worktrees until their branches are merged, abandoned intentionally, or handed off with clear notes. Record worktree paths in Linear progress comments when parallel execution starts and in completion comments when work finishes.
 
 ### Completion Comment Template
 
