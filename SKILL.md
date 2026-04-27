@@ -38,6 +38,8 @@ Before creating issues:
 4. If this is a live production app, add production-readiness and output-preservation gates before fix tickets.
 5. Prefer milestones and parent issues over one giant issue list.
 6. For agent-heavy projects, create a companion execution ledger before or alongside Linear issue creation.
+7. Build a sparse link graph across tasks, docs, source artifacts, and verification evidence.
+8. Add final auto-research validation tasks for binary checks and fixed evaluators before release/completion.
 
 ## Standard Milestones
 
@@ -129,6 +131,10 @@ What is wrong, risky, or missing.
 - Exact commands or checks.
 - Before/after comparison when output matters.
 
+## Reference Links
+- Related Linear issues, blockers, docs, PRs, commits, source files, or ledger anchors.
+- Only include links that change implementation, sequencing, verification, or recovery.
+
 ## Docs / Local Rules
 - Context7 library IDs and direct docs links.
 - Local AGENTS/CLAUDE/rule files.
@@ -138,6 +144,31 @@ What is wrong, risky, or missing.
 - Known overlap files/modules.
 - Follow-up/backfill/migration notes.
 ```
+
+## Sparse Link Graph
+
+Use links as context compression, not decoration. The project should become a small navigable web where future agents can recover the right context quickly without reading every issue.
+
+Always use formal Linear relationships for:
+
+- parent/child workstream structure
+- `blocks`
+- `blockedBy`
+- `relatedTo`
+- duplicates or follow-up issues when discovered
+
+Use Markdown URLs or Linear links inside descriptions/comments for:
+
+- Context7 or official docs that materially guide implementation
+- source files, routes, scripts, migrations, or config paths
+- GitHub PRs, commits, branches, and compare URLs
+- companion execution ledger paths
+- external design notes or runbooks
+- verification artifacts, dashboards, or logs
+
+Keep the graph sparse. Normal child issues should usually have 3-7 high-signal links at most. Guide issues, verification matrices, and release gates may carry more. Do not link every issue to every other issue; weak links increase reading cost and make the project slower.
+
+Use this rule: links should compress context, not clutter tasks. If a link does not affect implementation, sequencing, verification, or recovery, leave it out.
 
 ## Required Guide Issues
 
@@ -166,6 +197,46 @@ Must include:
 - browser/UI checks if relevant
 - database migration checks
 - rollback and post-deploy observation requirements
+- binary/frozen evaluator checks for any measurable project outcome
+- final auto-research validation tasks and pass/fail thresholds
+
+## Auto-Research Validation Tasks
+
+At the end of an execution plan, add explicit validation tasks inspired by Andrej Karpathy's autoresearch loop. Before defining the loop, look up the current autoresearch source or explanation when internet access is available, then adapt the pattern to the project instead of copying ML-specific details.
+
+Use this pattern:
+
+1. Define a fixed evaluator for binary or numeric outcomes.
+2. Freeze the evaluator before the final loop begins.
+3. Make one focused change or hypothesis at a time.
+4. Run the benchmark/check.
+5. Keep the change only if correctness remains green and the score improves or stays valid.
+6. Revert or create a follow-up task when the experiment fails.
+7. Record learnings in the companion ledger.
+8. Repeat until the score is stable and no high-priority binary failures remain.
+
+Good evaluator candidates:
+
+- tests pass/fail
+- typecheck or lint error counts
+- build success
+- API contract checks
+- route/auth/RBAC matrices
+- database migration validation
+- output snapshot comparisons
+- accessibility/performance scores
+- repo readiness or release checklist scores
+- `linear-agent reconcile` output for Linear/ledger drift
+
+Create final issues such as:
+
+- `Workstream: Frozen Evaluator And Recursive Validation`
+- `Add binary validation harness`
+- `Run auto-research failure discovery loop`
+- `Create follow-up tasks for failed checks`
+- `Re-run final evaluator until stable`
+
+Do not let agents mutate the evaluator during the final validation loop unless the task is explicitly to fix an invalid evaluator. Changing the evaluator mid-loop invalidates prior results.
 
 ## Companion Execution Ledger
 

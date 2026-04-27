@@ -6,7 +6,8 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
-- No unreleased changes.
+- Added sparse link graph guidance for high-signal task, docs, PR, ledger, and verification references.
+- Added final auto-research validation task guidance for binary/frozen evaluator checks before project completion.
 
 ## 2.0.0 - 2026-04-28
 

@@ -34,10 +34,12 @@ Together they help an agent:
 - Create Linear projects with useful milestones instead of one giant task list.
 - Add parent workstreams that explain sequencing, parallel safety, non-goals, and verification expectations.
 - Create required guide issues for agent operating instructions and verification matrices.
+- Build a sparse link graph between issues, docs, source files, PRs, ledgers, and verification artifacts.
 - Apply consistent labels such as `agent-ready`, `parallel-safe`, `serial-required`, `production-risk`, `touches-db`, and `verification-missing`.
 - Add production-readiness and output-preservation gates when the work touches live systems.
 - Maintain a Markdown execution ledger with source-of-truth links, active state, issue progress, decisions, blockers, risks, and handoff notes.
 - Move issues through `In Progress` and `Done` only when the local ledger, Linear comment, and verification evidence agree.
+- Add final auto-research validation tasks for binary checks and fixed evaluators.
 - Produce readable handoffs for future agents.
 - Finalize the ledger at project completion so stale checkboxes do not mislead the next session.
 
@@ -99,10 +101,24 @@ Each child issue should explain:
 - Acceptance criteria.
 - Verification commands.
 - Relevant docs and local rules.
+- High-signal reference links.
 - Parallel-safety notes.
 - Known overlap files or modules.
 
 The result is a backlog that an agent can actually execute without needing to rediscover the whole project.
+
+### Sparse Link Graph
+
+The skill now treats links as context compression. A good Linear project should behave like a small, useful web:
+
+- parent and child workstreams show execution shape
+- `blocks`, `blockedBy`, and `relatedTo` show sequencing and related risk
+- docs links show why a technical choice was made
+- source file, PR, commit, and branch links show where the work happened
+- ledger links show where durable execution memory lives
+- verification links show what proved the work was done
+
+The point is not to link everything. Normal child issues should stay sparse, usually 3-7 high-signal links. Guide issues, verification matrices, and final release gates can carry more. Links should compress context, not clutter tasks.
 
 ### Parallel-Agent Operating Model
 
@@ -177,7 +193,28 @@ linear-agent complete MAS-123 \
 
 If `--verification` is missing, the command fails. This is deliberate. It prevents agents from marking work complete without evidence.
 
-### 5. Handoff Or Finalize
+### 5. Auto-Research Validation Loop
+
+Before a project is finalized, the skill adds end-of-plan validation tasks based on Andrej Karpathy's autoresearch pattern:
+
+1. define a fixed evaluator
+2. freeze the evaluator
+3. make one focused change or hypothesis
+4. run the benchmark/check
+5. keep the change if correctness remains green
+6. revert or create a follow-up task if it fails
+7. record learnings in the ledger
+8. repeat until the score is stable
+
+For this skill, the evaluator is:
+
+```bash
+python3 tools/linear-agent-evaluator.py
+```
+
+For other projects, the evaluator might be tests, lint/typecheck counts, build success, API contract checks, output snapshots, accessibility scores, repo readiness, or `linear-agent reconcile` drift results. The important part is that the evaluator is binary or numeric and does not move during the final loop.
+
+### 6. Handoff Or Finalize
 
 For unfinished work:
 
@@ -194,6 +231,7 @@ For completed projects:
 linear-agent finalize \
   --ledger /path/to/EXECUTION.md \
   --verification "Linear read-back complete; all checks pass" \
+  --linear-reconciled \
   --dependencies "not-applicable:no blocking dependencies were required" \
   --production-gates "not-applicable:not a production application" \
   --sink-gates "not-applicable:no sync or output sink in scope"
@@ -295,6 +333,7 @@ linear-agent handoff \
 linear-agent finalize \
   --ledger /path/to/EXECUTION.md \
   --verification "No To Do/In Progress issues remain; final checks pass" \
+  --linear-reconciled \
   --dependencies "satisfied" \
   --production-gates "satisfied" \
   --sink-gates "not-applicable:no sync or output sink in scope"
