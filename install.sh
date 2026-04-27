@@ -8,14 +8,16 @@ BIN_DIR="$HOME/.local/bin"
 
 mkdir -p "$SKILL_DIR" "$BIN_DIR"
 
-rsync -a --delete \
-  --exclude '.git' \
-  --exclude '.gitignore' \
-  --exclude '.github' \
-  --exclude 'LICENSE' \
-  --exclude 'README.md' \
-  --exclude 'install.sh' \
-  "$REPO_DIR/" "$SKILL_DIR/"
+if [ "$REPO_DIR" != "$SKILL_DIR" ]; then
+  rsync -a --delete \
+    --exclude '.git' \
+    --exclude '.gitignore' \
+    --exclude '.github' \
+    --exclude 'LICENSE' \
+    --exclude 'README.md' \
+    --exclude 'install.sh' \
+    "$REPO_DIR/" "$SKILL_DIR/"
+fi
 
 cat >"$BIN_DIR/linear-agent" <<EOF
 #!/usr/bin/env bash

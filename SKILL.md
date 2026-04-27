@@ -216,7 +216,23 @@ At the start of a resumed session, read the ledger, then reconcile it against Li
 
 ## Linear Transition Wrapper
 
-For execution-state transitions, prefer the local `linear-agent` wrapper when available. The wrapper updates the companion ledger first and prints the exact Linear MCP actions the agent must perform and read-back verify.
+For execution-state transitions, prefer the local `linear-agent` wrapper when available. By default, the wrapper updates the companion ledger first and prints the exact Linear MCP actions the agent must perform and read-back verify.
+
+When Linear API credentials are available, use direct automation mode for lower-token, lower-drift execution:
+
+```bash
+LINEAR_API_KEY=... linear-agent start MAS-123 \
+  --ledger <path> \
+  --agent Codex \
+  --worktree <path> \
+  --apply-linear
+```
+
+Direct mode uses Linear GraphQL, updates the issue state, creates the progress comment, reads the issue back, and only then confirms the ledger row. It requires `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN`; `LINEAR_API_URL` may override the endpoint and defaults to `https://api.linear.app/graphql`. Endpoint overrides are validated to `https://api.linear.app` unless an intentional unsafe/testing override flag is set. If a workspace uses custom state names or duplicate state names, pin IDs with variables such as `LINEAR_STATE_IN_PROGRESS` and `LINEAR_STATE_DONE`; reconciliation treats matching override IDs as valid even when Linear's visible state name differs. If credentials are missing, stay in dry-run mode and perform the printed MCP actions. Fake Linear transport is test-only and requires `LINEAR_AGENT_TEST_MODE=1`; do not use fake transport variables in real project execution.
+
+Use `linear-agent reconcile --ledger <path>` at session start, after failures, and before finalization to compare ledger issue rows against Linear read-back. Reconciliation requires Linear credentials or a test fake transport. `linear-agent finalize` requires `--linear-reconciled`; only pass it after the final Linear/project read-back has succeeded.
+
+If direct mode reports a post-update confirmation failure, assume Linear may have changed while the ledger did not. Run `linear-agent reconcile --ledger <path>`, inspect the issue comments/state, and only then decide whether to retry, repair the ledger row, or record a blocker.
 
 Use it for:
 
@@ -225,13 +241,14 @@ Use it for:
 - recording verification: `linear-agent verify MAS-123 --ledger <path> --verification "<check>: <result>"`
 - completing work: `linear-agent complete MAS-123 --ledger <path> --verification "<check>: <result>"`
 - handoff: `linear-agent handoff --ledger <path> --note "<handoff>"`
+- reconciliation: `linear-agent reconcile --ledger <path>`
 - final project reconciliation: `linear-agent finalize --ledger <path> --verification "<Linear read-back and final checks>" --dependencies "satisfied" --production-gates "satisfied" --sink-gates "not-applicable:<reason>"`
 
 `linear-agent init` refuses to overwrite an existing ledger unless `--force` is passed. Use `--force` only when replacing the prior ledger is intentional.
 
 `linear-agent finalize` requires explicit dependency, production, and sink/output gate outcomes. Use `satisfied` when the gate was completed, or `not-applicable:<reason>` when the gate genuinely does not apply.
 
-After running the wrapper, perform the printed Linear MCP actions using structured Linear tools, then verify with a read-back call. The wrapper is not a replacement for Linear itself; it is the deterministic transition path that keeps the ledger, comments, and issue status from drifting.
+After running the wrapper in default dry-run mode, perform the printed Linear MCP actions using structured Linear tools, then verify with a read-back call. In direct mode, verify the CLI output says the Linear transition was applied and read-back verified. If direct mode fails, record the mismatch and run `linear-agent reconcile` before choosing the next issue.
 
 If the wrapper is unavailable, manually follow the same sequence:
 

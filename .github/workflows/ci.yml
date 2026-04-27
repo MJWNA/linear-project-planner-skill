@@ -21,12 +21,18 @@ jobs:
           bash -n scripts/linear-agent
           bash -n tests/test-linear-agent.sh
 
+      - name: Python syntax
+        run: python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/graphql.py tools/linear-agent-evaluator.py
+
       - name: YAML syntax
         run: |
           ruby -e 'require "yaml"; skill = File.read("SKILL.md"); frontmatter = skill.match(/\A---\n(.*?)\n---/m)[1]; YAML.safe_load(frontmatter); YAML.load_file("agents/openai.yaml"); puts "yaml ok"'
 
       - name: Regression tests
-        run: bash tests/test-linear-agent.sh
+        run: |
+          bash tests/test-linear-agent.sh
+          python3 -m unittest tests/test_linear_agent_graphql.py
+          python3 tools/linear-agent-evaluator.py
 
       - name: Trailing whitespace
         run: |
@@ -39,5 +45,9 @@ jobs:
             scripts/linear-agent \
             templates/EXECUTION.md \
             tests/test-linear-agent.sh \
+            tests/test_linear_agent_graphql.py \
+            lib/linear_agent/__init__.py \
+            lib/linear_agent/graphql.py \
+            tools/linear-agent-evaluator.py \
             agents/openai.yaml \
             .github/workflows/ci.yml
