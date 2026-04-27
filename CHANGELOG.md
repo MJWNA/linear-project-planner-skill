@@ -6,6 +6,10 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
+- No unreleased changes.
+
+## 2.0.0 - 2026-04-28
+
 - Added README trust badges for live CI and license status.
 - Documented the manual release surface for public skill snapshots.
 - Added direct Linear GraphQL automation mode for issue transitions behind `--apply-linear` / `LINEAR_AGENT_APPLY=1`.
