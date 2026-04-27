@@ -103,7 +103,11 @@ def main() -> int:
             contains("README.md", "--apply-linear")
             and contains("README.md", "SCORE 100/100")
             and contains("SKILL.md", "LINEAR_API_KEY")
-            and contains("README.md", "linear-agent reconcile"),
+            and contains("README.md", "linear-agent reconcile")
+            and contains("SKILL.md", "## Sparse Link Graph")
+            and contains("SKILL.md", "## Auto-Research Validation Tasks")
+            and contains("README.md", "### Sparse Link Graph")
+            and contains("README.md", "### 5. Auto-Research Validation Loop"),
             "missing direct mode docs",
         )
     )

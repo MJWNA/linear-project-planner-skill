@@ -36,8 +36,15 @@ LEDGER="$TMP_DIR/EXECUTION.md"
 assert_contains "$SKILL_DIR/SKILL.md" "## Mandatory Parallel Dispatch"
 assert_contains "$SKILL_DIR/SKILL.md" "When there are 2+ independent, dependency-ready workstreams with disjoint write scopes"
 assert_contains "$SKILL_DIR/SKILL.md" "Parallel write-capable agents must not share one working tree"
+assert_contains "$SKILL_DIR/SKILL.md" "## Sparse Link Graph"
+assert_contains "$SKILL_DIR/SKILL.md" "links should compress context, not clutter tasks"
+assert_contains "$SKILL_DIR/SKILL.md" "## Auto-Research Validation Tasks"
+assert_contains "$SKILL_DIR/SKILL.md" "Do not let agents mutate the evaluator during the final validation loop"
 assert_contains "$SKILL_DIR/README.md" "### Parallel-Agent Operating Model"
 assert_contains "$SKILL_DIR/README.md" "Each write-capable agent gets one Linear issue, one branch, one git worktree, and one explicit write set"
+assert_contains "$SKILL_DIR/README.md" "### Sparse Link Graph"
+assert_contains "$SKILL_DIR/README.md" "### 5. Auto-Research Validation Loop"
+assert_contains "$SKILL_DIR/README.md" "Links should compress context, not clutter tasks"
 
 "$BIN" init \
   --ledger "$LEDGER" \
