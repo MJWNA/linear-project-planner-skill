@@ -337,7 +337,7 @@ class LinearAgentGraphQLTests(unittest.TestCase):
             self.assertEqual(state["issues"]["MAS-123"]["state"]["name"], "In Progress")
 
     def test_ledger_row_parser_respects_escaped_pipes(self) -> None:
-        from linear_agent.graphql import parse_ledger_rows
+        from linear_agent.ledger import existing_worktree, parse_issue_rows, unfinished_issue_rows
 
         with tempfile.TemporaryDirectory() as tmp:
             ledger_path = Path(tmp) / "EXECUTION.md"
@@ -355,10 +355,12 @@ class LinearAgentGraphQLTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            rows = parse_ledger_rows(ledger_path)
+            rows = parse_issue_rows(ledger_path)
 
-            self.assertEqual(rows[0]["worktree"], "/tmp/example|worktree")
-            self.assertEqual(rows[0]["verification"], "npm test: pass | lint: pass\nsecond line")
+            self.assertEqual(rows[0].worktree, "/tmp/example|worktree")
+            self.assertEqual(rows[0].verification, "npm test: pass | lint: pass\nsecond line")
+            self.assertEqual(existing_worktree(ledger_path, "MAS-123"), "/tmp/example|worktree")
+            self.assertEqual(unfinished_issue_rows(ledger_path), [])
 
 
 if __name__ == "__main__":

@@ -54,6 +54,7 @@ def main() -> int:
             "-m",
             "py_compile",
             "lib/linear_agent/__init__.py",
+            "lib/linear_agent/ledger.py",
             "lib/linear_agent/graphql.py",
         ]
     )
@@ -101,7 +102,7 @@ def main() -> int:
             "docs explain direct mode",
             10,
             contains("README.md", "--apply-linear")
-            and contains("README.md", "SCORE 100/100")
+            and contains("README.md", "SCORE 130/130")
             and contains("SKILL.md", "LINEAR_API_KEY")
             and contains("README.md", "linear-agent reconcile")
             and contains("scripts/linear-agent", "finalize refuses unfinished issue rows")
@@ -112,6 +113,40 @@ def main() -> int:
             and contains("README.md", "### Sparse Link Graph")
             and contains("README.md", "### 5. Auto-Research Validation Loop"),
             "missing direct mode docs",
+        )
+    )
+    checks.append(
+        (
+            "structured tool contract",
+            10,
+            contains("references/command-schemas.md", "linear_project.finalize")
+            and contains("references/command-schemas.md", "Tool Description Checklist")
+            and contains("SKILL.md", "## Quick Path")
+            and contains("SKILL.md", "## Reference Map"),
+            "missing structured command schema or quick path docs",
+        )
+    )
+    checks.append(
+        (
+            "runtime state guidance",
+            10,
+            contains("references/runtime-state.md", "previous_response_id")
+            and contains("references/runtime-state.md", "phase")
+            and contains("README.md", "Responses API State"),
+            "missing runtime state guidance",
+        )
+    )
+    checks.append(
+        (
+            "agent output fixture coverage",
+            10,
+            contains("tests/fixtures/linear_issue_templates.md", "## Final Completion Comment")
+            and contains("tests/fixtures/linear_issue_templates.md", "Standard labels")
+            and contains("tests/fixtures/linear_issue_templates.md", "Dependencies")
+            and contains("tests/fixtures/linear_issue_templates.md", "Sparse links")
+            and contains("tests/fixtures/linear_issue_templates.md", "Residual risks")
+            and contains("tests/fixtures/linear_issue_templates.md", "Follow-ups"),
+            "missing issue template or final comment fixtures",
         )
     )
 
@@ -125,8 +160,8 @@ def main() -> int:
             if detail:
                 print(detail.rstrip())
 
-    print(f"SCORE {score}/100")
-    return 0 if score == 100 else 1
+    print(f"SCORE {score}/130")
+    return 0 if score == 130 else 1
 
 
 if __name__ == "__main__":
