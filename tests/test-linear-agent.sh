@@ -149,6 +149,168 @@ assert_contains "$TMP_DIR/start.out" "Claimed for implementation with \"quoted\"
 assert_contains "$TMP_DIR/start.out" "Parallel write: yes"
 assert_contains "$TMP_DIR/start.out" "Verify with _list_issues"
 
+FAKE_STATE="$TMP_DIR/fake-linear-state.json"
+FAKE_REQUESTS="$TMP_DIR/fake-linear-requests.jsonl"
+cat >"$FAKE_STATE" <<'JSON'
+{
+  "states": [
+    {"id": "todo", "name": "Todo", "type": "unstarted", "team": {"id": "team-mas", "key": "MAS"}},
+    {"id": "in-progress", "name": "In Progress", "type": "started", "team": {"id": "team-mas", "key": "MAS"}},
+    {"id": "done", "name": "Done", "type": "completed", "team": {"id": "team-mas", "key": "MAS"}}
+  ],
+  "issues": {
+    "MAS-999": {
+      "id": "issue-999",
+      "identifier": "MAS-999",
+      "title": "Fake direct issue",
+      "description": "",
+      "url": "https://linear.app/example/MAS-999",
+      "state": {"id": "todo", "name": "Todo", "type": "unstarted"},
+      "team": {"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"},
+      "project": {"id": "project", "name": "Project", "url": "https://linear.app/project"},
+      "comments": {"nodes": []},
+      "updatedAt": "2026-04-28T00:00:00+10:00"
+    }
+  }
+}
+JSON
+
+LINEAR_AGENT_TEST_MODE=1 \
+LINEAR_AGENT_FAKE_STATE="$FAKE_STATE" \
+LINEAR_AGENT_FAKE_REQUESTS="$FAKE_REQUESTS" \
+"$BIN" start MAS-999 \
+  --ledger "$LEDGER" \
+  --agent "Codex" \
+  --worktree "/tmp/direct-worktree" \
+  --apply-linear \
+  --note "Direct apply smoke test" \
+  >"$TMP_DIR/start-apply.out"
+
+assert_contains "$TMP_DIR/start-apply.out" "Linear automation applied and read-back verified"
+assert_contains "$LEDGER" "| MAS-999 | In Progress | agent:executing | Codex | /tmp/direct-worktree |"
+assert_contains "$FAKE_REQUESTS" "\"operationName\": \"IssueStateUpdate\""
+
+set +e
+LINEAR_AGENT_TEST_MODE=1 \
+LINEAR_AGENT_FAKE_STATE="$FAKE_STATE" "$BIN" reconcile \
+  --ledger "$LEDGER" \
+  >"$TMP_DIR/reconcile.out"
+reconcile_rc=$?
+set -e
+
+if [ "$reconcile_rc" -eq 0 ]; then
+  echo "Expected reconcile to find mismatches for fake issues not present in the fake Linear state" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/reconcile.out" "match | MAS-999 | In Progress"
+assert_contains "$LEDGER" "Linear reconciliation found drift. Summary:"
+
+FAILING_LEDGER="$TMP_DIR/failing-direct-ledger.md"
+"$BIN" init \
+  --ledger "$FAILING_LEDGER" \
+  --project "Failing Direct Apply" \
+  --prompt "Exercise failed direct apply" \
+  >"$TMP_DIR/failing-direct-init.out"
+FAILING_STATE="$TMP_DIR/failing-linear-state.json"
+cat >"$FAILING_STATE" <<'JSON'
+{
+  "fail_on": "IssueStateUpdate",
+  "states": [
+    {"id": "todo", "name": "Todo", "type": "unstarted", "team": {"id": "team-mas", "key": "MAS"}},
+    {"id": "in-progress", "name": "In Progress", "type": "started", "team": {"id": "team-mas", "key": "MAS"}}
+  ],
+  "issues": {
+    "MAS-998": {
+      "id": "issue-998",
+      "identifier": "MAS-998",
+      "title": "Failing direct issue",
+      "description": "",
+      "url": "https://linear.app/example/MAS-998",
+      "state": {"id": "todo", "name": "Todo", "type": "unstarted"},
+      "team": {"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"},
+      "project": {"id": "project", "name": "Project", "url": "https://linear.app/project"},
+      "comments": {"nodes": []},
+      "updatedAt": "2026-04-28T00:00:00+10:00"
+    }
+  }
+}
+JSON
+
+set +e
+LINEAR_AGENT_TEST_MODE=1 \
+LINEAR_AGENT_FAKE_STATE="$FAILING_STATE" "$BIN" start MAS-998 \
+  --ledger "$FAILING_LEDGER" \
+  --agent "Codex" \
+  --worktree "/tmp/failing-direct-worktree" \
+  --apply-linear \
+  --note "This should fail before ledger confirmation" \
+  >"$TMP_DIR/start-apply-fail.out" 2>&1
+apply_fail_rc=$?
+set -e
+
+if [ "$apply_fail_rc" -eq 0 ]; then
+  echo "Expected failed direct apply to exit non-zero" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/start-apply-fail.out" "Fake Linear failure for IssueStateUpdate"
+assert_not_contains "$FAILING_LEDGER" "- Active issue: MAS-998"
+assert_not_contains "$FAILING_LEDGER" "| MAS-998 | In Progress |"
+assert_contains "$FAILING_LEDGER" "failed before ledger confirmation"
+
+COMMENT_FAIL_LEDGER="$TMP_DIR/comment-fail-ledger.md"
+"$BIN" init \
+  --ledger "$COMMENT_FAIL_LEDGER" \
+  --project "Comment Failure Direct Apply" \
+  --prompt "Exercise partial direct apply" \
+  >"$TMP_DIR/comment-fail-init.out"
+COMMENT_FAIL_STATE="$TMP_DIR/comment-fail-state.json"
+cat >"$COMMENT_FAIL_STATE" <<'JSON'
+{
+  "fail_on": "CommentCreate",
+  "states": [
+    {"id": "todo", "name": "Todo", "type": "unstarted", "team": {"id": "team-mas", "key": "MAS"}},
+    {"id": "in-progress", "name": "In Progress", "type": "started", "team": {"id": "team-mas", "key": "MAS"}}
+  ],
+  "issues": {
+    "MAS-997": {
+      "id": "issue-997",
+      "identifier": "MAS-997",
+      "title": "Partial direct issue",
+      "description": "",
+      "url": "https://linear.app/example/MAS-997",
+      "state": {"id": "todo", "name": "Todo", "type": "unstarted"},
+      "team": {"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"},
+      "project": {"id": "project", "name": "Project", "url": "https://linear.app/project"},
+      "comments": {"nodes": []},
+      "updatedAt": "2026-04-28T00:00:00+10:00"
+    }
+  }
+}
+JSON
+
+set +e
+LINEAR_AGENT_TEST_MODE=1 \
+LINEAR_AGENT_FAKE_STATE="$COMMENT_FAIL_STATE" "$BIN" start MAS-997 \
+  --ledger "$COMMENT_FAIL_LEDGER" \
+  --agent "Codex" \
+  --worktree "/tmp/comment-fail-worktree" \
+  --apply-linear \
+  --note "This should fail after Linear state update" \
+  >"$TMP_DIR/start-comment-fail.out" 2>&1
+comment_fail_rc=$?
+set -e
+
+if [ "$comment_fail_rc" -eq 0 ]; then
+  echo "Expected comment failure after direct apply to exit non-zero" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/start-comment-fail.out" "post-update confirmation failed"
+assert_contains "$TMP_DIR/start-comment-fail.out" "Run linear-agent reconcile"
+assert_not_contains "$COMMENT_FAIL_LEDGER" "- Active issue: MAS-997"
+assert_not_contains "$COMMENT_FAIL_LEDGER" "| MAS-997 | In Progress |"
+assert_contains "$COMMENT_FAIL_LEDGER" "failed before ledger confirmation"
+assert_contains "$COMMENT_FAIL_STATE" "\"name\": \"In Progress\""
+
 "$BIN" block MAS-124 \
   --ledger "$LEDGER" \
   --agent "Codex" \
@@ -198,7 +360,7 @@ assert_contains "$TMP_DIR/complete.out" "_save_comment(issueId=\"MAS-123\", body
 assert_contains "$TMP_DIR/complete.out" "_save_issue(id=\"MAS-123\", state=\"Done\")"
 assert_contains "$TMP_DIR/complete.out" "Verify with _list_issues"
 assert_contains "$LEDGER" "## Activity Log"
-if [ "$(grep -Fc "| MAS-123 |" "$LEDGER")" -ne 1 ]; then
+if [ "$(grep -Ec '^\| MAS-123 \|' "$LEDGER")" -ne 1 ]; then
   echo "Expected repeated MAS-123 transitions to update one row" >&2
   cat "$LEDGER" >&2
   exit 1
@@ -229,6 +391,7 @@ assert_not_contains "$LEDGER" "Final ledger reconciliation completed"
   --ledger "$LEDGER" \
   --agent "Codex" \
   --verification "all Linear issues done; fixed evaluator passed" \
+  --linear-reconciled \
   --dependencies "not-applicable:no blocking dependencies were required" \
   --production-gates "not-applicable:not a production application" \
   --sink-gates "not-applicable:no sync or output sink in scope" \
@@ -259,6 +422,7 @@ set +e
   --ledger "$LEDGER" \
   --agent "Codex" \
   --verification "should fail without explicit gates" \
+  --linear-reconciled \
   --dependencies "not-applicable:no blocking dependencies were required" \
   >"$TMP_DIR/finalize-missing-gates.out" 2>&1
 missing_gates_rc=$?
@@ -269,5 +433,23 @@ if [ "$missing_gates_rc" -eq 0 ]; then
   exit 1
 fi
 assert_contains "$TMP_DIR/finalize-missing-gates.out" "finalize requires --production-gates"
+
+set +e
+"$BIN" finalize \
+  --ledger "$LEDGER" \
+  --agent "Codex" \
+  --verification "should fail without Linear reconciliation" \
+  --dependencies "not-applicable:no blocking dependencies were required" \
+  --production-gates "not-applicable:not a production application" \
+  --sink-gates "not-applicable:no sync or output sink in scope" \
+  >"$TMP_DIR/finalize-missing-reconcile.out" 2>&1
+missing_reconcile_rc=$?
+set -e
+
+if [ "$missing_reconcile_rc" -eq 0 ]; then
+  echo "Expected finalize without --linear-reconciled to fail" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/finalize-missing-reconcile.out" "finalize requires --linear-reconciled"
 
 echo "linear-agent tests passed"

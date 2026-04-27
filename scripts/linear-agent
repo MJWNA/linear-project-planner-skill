@@ -31,10 +31,13 @@ Usage:
   linear-agent verify ISSUE --ledger PATH [--agent NAME] [--verification TEXT] [--note TEXT]
   linear-agent complete ISSUE --ledger PATH [--agent NAME] --verification TEXT [--note TEXT]
   linear-agent handoff --ledger PATH [--note TEXT] [--next TEXT]
-  linear-agent finalize --ledger PATH [--agent NAME] --verification TEXT --dependencies VALUE --production-gates VALUE --sink-gates VALUE [--note TEXT]
+  linear-agent finalize --ledger PATH [--agent NAME] --verification TEXT --linear-reconciled --dependencies VALUE --production-gates VALUE --sink-gates VALUE [--note TEXT]
+  linear-agent reconcile --ledger PATH
 
 This wrapper updates the companion execution ledger and prints the Linear MCP
-actions the agent must perform and read-back verify.
+actions the agent must perform and read-back verify. Add --apply-linear or set
+LINEAR_AGENT_APPLY=1 on issue transition commands to apply the Linear state
+change and comment directly through Linear GraphQL before confirming the ledger.
 EOF
   exit "$code"
 }
@@ -321,6 +324,20 @@ $comment
 EOF
 }
 
+apply_linear_transition() {
+  local action=$1
+  local issue=$2
+  local state=$3
+  local comment=$4
+
+  PYTHONPATH="$SKILL_DIR/lib${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 -m linear_agent.graphql apply-transition \
+      --issue "$issue" \
+      --state "$state" \
+      --comment "$comment" \
+      --action "$action"
+}
+
 parse_common_transition_args() {
   LEDGER=
   AGENT=${AGENT:-Codex}
@@ -332,6 +349,8 @@ parse_common_transition_args() {
   PRODUCTION_GATES=${PRODUCTION_GATES:-}
   SINK_GATES=${SINK_GATES:-}
   PARALLEL_WRITE=0
+  APPLY_LINEAR=${LINEAR_AGENT_APPLY:-0}
+  LINEAR_RECONCILED=0
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -345,6 +364,9 @@ parse_common_transition_args() {
       --production-gates) need_value "$1" "${2:-}"; PRODUCTION_GATES=$2; shift 2 ;;
       --sink-gates) need_value "$1" "${2:-}"; SINK_GATES=$2; shift 2 ;;
       --parallel-write) PARALLEL_WRITE=1; shift ;;
+      --apply-linear) APPLY_LINEAR=1; shift ;;
+      --dry-run) APPLY_LINEAR=0; shift ;;
+      --linear-reconciled) LINEAR_RECONCILED=1; shift ;;
       *) echo "Unknown option: $1" >&2; usage ;;
     esac
   done
@@ -418,6 +440,11 @@ transition_issue() {
   local agent_state
   local comment
   local current_worktree
+  local overall_status=
+  local active_issue_value=
+  local active_agent_value=
+  local active_worktree_value=
+  local next_safest_action=
 
   current_worktree=$(existing_worktree "$LEDGER" "$issue" | trim)
   if [ -z "$WORKTREE" ]; then
@@ -433,47 +460,66 @@ transition_issue() {
       linear_status="In Progress"
       agent_state="agent:executing"
       comment="Started work. Agent: $AGENT. Worktree: ${WORKTREE:-n/a}. Parallel write: $([ "$PARALLEL_WRITE" -eq 1 ] && printf yes || printf no). Note: ${NOTE:-claimed for execution}."
-      replace_line "$LEDGER" "- Overall status:" "- Overall status: executing"
-      replace_line "$LEDGER" "- Active issue:" "- Active issue: $issue"
-      replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"
-      replace_line "$LEDGER" "- Active worktree:" "- Active worktree: $WORKTREE"
-      replace_line "$LEDGER" "- Next safest action:" "- Next safest action: execute $issue and record verification before completion"
+      overall_status="executing"
+      active_issue_value="$issue"
+      active_agent_value="$AGENT"
+      active_worktree_value="$WORKTREE"
+      next_safest_action="execute $issue and record verification before completion"
       ;;
     block)
       linear_status="In Progress"
       agent_state="agent:blocked"
       comment="Blocked. Agent: $AGENT. Blocker: ${NOTE:-not specified}. Safest next action: ${NEXT:-choose another dependency-ready issue}."
-      replace_line "$LEDGER" "- Overall status:" "- Overall status: blocked"
-      replace_line "$LEDGER" "- Active issue:" "- Active issue: $issue"
-      replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"
-      replace_line "$LEDGER" "- Next safest action:" "- Next safest action: ${NEXT:-resolve blocker or choose another dependency-ready issue}"
+      overall_status="blocked"
+      active_issue_value="$issue"
+      active_agent_value="$AGENT"
+      next_safest_action="${NEXT:-resolve blocker or choose another dependency-ready issue}"
       ;;
     verify)
       linear_status="In Progress"
       agent_state="agent:verifying"
       comment="Verification update. Agent: $AGENT. Verification: ${VERIFICATION:-not specified}. Note: ${NOTE:-none}."
-      replace_line "$LEDGER" "- Overall status:" "- Overall status: verifying"
-      replace_line "$LEDGER" "- Active issue:" "- Active issue: $issue"
-      replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"
-      replace_line "$LEDGER" "- Next safest action:" "- Next safest action: complete $issue only after verification and Linear read-back pass"
+      overall_status="verifying"
+      active_issue_value="$issue"
+      active_agent_value="$AGENT"
+      next_safest_action="complete $issue only after verification and Linear read-back pass"
       ;;
     complete)
       [ -n "$VERIFICATION" ] || { echo "complete requires --verification" >&2; exit 2; }
       linear_status="Done"
       agent_state="agent:pr-ready"
       comment="Completed. Agent: $AGENT. Verification: $VERIFICATION. Note: ${NOTE:-none}."
-      replace_line "$LEDGER" "- Overall status:" "- Overall status: issue completed"
-      replace_line "$LEDGER" "- Active issue:" "- Active issue: $issue"
-      replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"
-      replace_line "$LEDGER" "- Next safest action:" "- Next safest action: reconcile Linear, then choose the next dependency-ready issue"
+      overall_status="issue completed"
+      active_issue_value="$issue"
+      active_agent_value="$AGENT"
+      next_safest_action="reconcile Linear, then choose the next dependency-ready issue"
       ;;
     *) usage ;;
   esac
 
+  if [ "$APPLY_LINEAR" = "1" ]; then
+    apply_linear_transition "$action" "$issue" "$linear_status" "$comment" || {
+      append_activity "$LEDGER" "$issue $action failed before ledger confirmation. Intended Linear state: $linear_status."
+      exit 1
+    }
+  fi
+
+  [ -z "$overall_status" ] || replace_line "$LEDGER" "- Overall status:" "- Overall status: $overall_status"
+  [ -z "$active_issue_value" ] || replace_line "$LEDGER" "- Active issue:" "- Active issue: $active_issue_value"
+  [ -z "$active_agent_value" ] || replace_line "$LEDGER" "- Active agent:" "- Active agent: $active_agent_value"
+  [ -z "$active_worktree_value" ] || replace_line "$LEDGER" "- Active worktree:" "- Active worktree: $active_worktree_value"
+  [ -z "$next_safest_action" ] || replace_line "$LEDGER" "- Next safest action:" "- Next safest action: $next_safest_action"
   replace_line "$LEDGER" "- Last verified:" "- Last verified: $(timestamp)"
   upsert_issue_row "$LEDGER" "$issue" "$linear_status" "$agent_state" "$AGENT" "$WORKTREE" "${VERIFICATION:-pending}"
   append_activity "$LEDGER" "$issue $action. $comment"
-  print_mcp_plan "$action" "$issue" "$linear_status" "$comment"
+  if [ "$APPLY_LINEAR" = "1" ]; then
+    cat <<EOF
+Linear automation applied and read-back verified.
+Transition recorded locally: $action
+EOF
+  else
+    print_mcp_plan "$action" "$issue" "$linear_status" "$comment"
+  fi
 }
 
 handoff() {
@@ -515,6 +561,7 @@ apply_gate_item() {
 finalize() {
   parse_common_transition_args "$@"
   [ -n "$VERIFICATION" ] || { echo "finalize requires --verification" >&2; exit 2; }
+  [ "$LINEAR_RECONCILED" -eq 1 ] || { echo "finalize requires --linear-reconciled after a successful Linear/project read-back" >&2; exit 2; }
   [ -n "$DEPENDENCIES" ] || { echo "finalize requires --dependencies" >&2; exit 2; }
   [ -n "$PRODUCTION_GATES" ] || { echo "finalize requires --production-gates" >&2; exit 2; }
   [ -n "$SINK_GATES" ] || { echo "finalize requires --sink-gates" >&2; exit 2; }
@@ -561,11 +608,81 @@ finalize() {
   print_finalize_plan "$comment"
 }
 
+agent_state_for_linear_status() {
+  case "$1" in
+    Done|Completed|Canceled|Cancelled) printf 'agent:pr-ready' ;;
+    *) printf 'agent:blocked' ;;
+  esac
+}
+
+apply_reconcile_results() {
+  local output_file=$1
+  local line
+  local issue
+  local ledger_status
+  local linear_status
+  local detail
+  local worktree
+
+  while IFS= read -r line; do
+    case "$line" in
+      mismatch\ \|\ *\ \|\ ledger=*\ \|\ linear=*)
+        issue=$(printf '%s\n' "$line" | awk -F ' \\| ' '{ print $2 }')
+        ledger_status=$(printf '%s\n' "$line" | sed -n 's/^mismatch | [^|]* | ledger=\([^|]*\) | linear=.*/\1/p')
+        linear_status=$(printf '%s\n' "$line" | sed -n 's/^mismatch | [^|]* | ledger=[^|]* | linear=//p')
+        worktree=$(existing_worktree "$LEDGER" "$issue" | trim)
+        upsert_issue_row "$LEDGER" "$issue" "$linear_status" "$(agent_state_for_linear_status "$linear_status")" "$AGENT" "$worktree" "Reconciled from Linear: ledger was $ledger_status; Linear is $linear_status"
+        ;;
+      missing\ \|\ *\ \|\ *)
+        issue=$(printf '%s\n' "$line" | awk -F ' \\| ' '{ print $2 }')
+        detail=$(printf '%s\n' "$line" | awk -F ' \\| ' '{ print $3 }')
+        worktree=$(existing_worktree "$LEDGER" "$issue" | trim)
+        upsert_issue_row "$LEDGER" "$issue" "Missing in Linear" "agent:blocked" "$AGENT" "$worktree" "Reconcile could not read Linear issue: $detail"
+        ;;
+    esac
+  done <"$output_file"
+}
+
+reconcile() {
+  parse_common_transition_args "$@"
+  local output_file
+  local reconcile_rc
+  local summary
+
+  output_file=$(mktemp)
+  set +e
+  PYTHONPATH="$SKILL_DIR/lib${PYTHONPATH:+:$PYTHONPATH}" \
+    python3 -m linear_agent.graphql reconcile --ledger "$LEDGER" \
+    >"$output_file" 2>&1
+  reconcile_rc=$?
+  set -e
+
+  cat "$output_file"
+  summary=$(tr '\n' '; ' <"$output_file" | sed 's/[[:space:]]*$//')
+  apply_reconcile_results "$output_file"
+  rm -f "$output_file"
+  if [ -z "$summary" ]; then
+    summary="no issue rows found"
+  fi
+  if [ "$reconcile_rc" -eq 0 ]; then
+    replace_line "$LEDGER" "- Overall status:" "- Overall status: reconciled"
+    replace_line "$LEDGER" "- Last verified:" "- Last verified: $(timestamp)"
+    append_activity "$LEDGER" "Linear reconciliation passed. Summary: $summary"
+  else
+    replace_line "$LEDGER" "- Overall status:" "- Overall status: reconciliation drift found"
+    replace_line "$LEDGER" "- Last verified:" "- Last verified: $(timestamp)"
+    replace_line "$LEDGER" "- Next safest action:" "- Next safest action: inspect reconciled drift rows before claiming or completing more work"
+    append_activity "$LEDGER" "Linear reconciliation found drift. Summary: $summary"
+  fi
+  return "$reconcile_rc"
+}
+
 case "$COMMAND" in
   init) init_ledger "$@" ;;
   start|block|verify|complete) transition_issue "$COMMAND" "$@" ;;
   handoff) handoff "$@" ;;
   finalize) finalize "$@" ;;
+  reconcile) reconcile "$@" ;;
   -h|--help|help) usage 0 ;;
   *) usage ;;
 esac

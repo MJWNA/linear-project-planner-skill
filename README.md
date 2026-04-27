@@ -235,6 +235,25 @@ linear-agent start MAS-123 \
   --note "Claimed for implementation"
 ```
 
+By default, `linear-agent` updates the ledger and prints the Linear actions an agent should perform. To apply the transition directly through Linear's GraphQL API, set credentials and add `--apply-linear`:
+
+```bash
+LINEAR_API_KEY=lin_api_... linear-agent start MAS-123 \
+  --ledger /path/to/EXECUTION.md \
+  --agent Codex \
+  --worktree /path/to/worktree \
+  --apply-linear \
+  --note "Claimed for implementation"
+```
+
+Direct mode updates the Linear issue state, creates the progress comment, reads the issue back, and then confirms the ledger row. It also supports `LINEAR_ACCESS_TOKEN` for OAuth tokens and `LINEAR_API_URL` for non-default endpoints. The default endpoint is `https://api.linear.app/graphql`; endpoint overrides must use `https://api.linear.app` unless you intentionally set `LINEAR_AGENT_ALLOW_NON_LINEAR_API_URL=1` for a trusted proxy or `LINEAR_AGENT_ALLOW_UNSAFE_API_URL=1` for local testing.
+
+Use reconciliation to compare ledger rows with Linear:
+
+```bash
+linear-agent reconcile --ledger /path/to/EXECUTION.md
+```
+
 ### Record A Blocker
 
 ```bash
@@ -318,12 +337,17 @@ It is especially useful for:
 ├── agents/
 │   └── openai.yaml
 ├── install.sh
+├── lib/
+│   └── linear_agent/
 ├── scripts/
 │   └── linear-agent
 ├── templates/
 │   └── EXECUTION.md
-└── tests/
-    └── test-linear-agent.sh
+├── tests/
+│   ├── test-linear-agent.sh
+│   └── test_linear_agent_graphql.py
+└── tools/
+    └── linear-agent-evaluator.py
 ```
 
 ## Quick Start
@@ -359,13 +383,31 @@ The skill is configured through committed files:
 
 Runtime state should stay outside the repo. Local execution ledgers belong under ignored workspace paths such as `.codex-linear-ledgers/`.
 
+Direct Linear automation is configured with environment variables:
+
+- `LINEAR_API_KEY`: personal API key for direct GraphQL writes
+- `LINEAR_ACCESS_TOKEN`: OAuth token alternative
+- `LINEAR_API_URL`: optional GraphQL endpoint override, validated to `https://api.linear.app` by default
+- `LINEAR_AGENT_APPLY=1`: deliberate session-level write mode that opts every transition command into direct mode; prefer visible `--apply-linear` for one-off writes
+- `LINEAR_STATE_IN_PROGRESS`: optional state ID override for `In Progress`
+- `LINEAR_STATE_DONE`: optional state ID override for `Done`
+- `LINEAR_AGENT_ALLOW_NON_LINEAR_API_URL=1`: allow a trusted non-Linear HTTPS API URL
+- `LINEAR_AGENT_ALLOW_UNSAFE_API_URL=1`: allow a non-HTTPS API URL for intentional local testing only
+- `LINEAR_AGENT_TEST_MODE=1`: required before fake transport variables are honored
+- `LINEAR_AGENT_FAKE_STATE`: test-only fake Linear state file
+- `LINEAR_AGENT_FAKE_REQUESTS`: test-only JSONL request log path
+
 ## Testing
 
 Run the regression suite:
 
 ```bash
 bash tests/test-linear-agent.sh
+python3 -m unittest tests/test_linear_agent_graphql.py
+python3 tools/linear-agent-evaluator.py
 ```
+
+The evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 100/100`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
 
 Run syntax checks:
 
@@ -373,6 +415,7 @@ Run syntax checks:
 bash -n install.sh
 bash -n scripts/linear-agent
 bash -n tests/test-linear-agent.sh
+python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/graphql.py tools/linear-agent-evaluator.py
 ```
 
 Optional, if installed locally:
@@ -385,7 +428,7 @@ shellcheck scripts/linear-agent tests/test-linear-agent.sh
 
 The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases are manual: tag a known-good commit after CI passes, update [CHANGELOG.md](CHANGELOG.md), and use generated GitHub release notes when a versioned release is useful.
 
-The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It runs shell syntax checks, YAML parsing, the regression test suite, and a trailing-whitespace scan on every push and pull request.
+The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It runs shell syntax checks, Python syntax checks, YAML parsing, the shell regression test suite, fake Linear GraphQL tests, and a trailing-whitespace scan on every push and pull request.
 
 ## Troubleshooting
 
@@ -393,6 +436,9 @@ The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
 - If `init` refuses to write the ledger, the file already exists. Use `--force` only when replacing it is intentional.
 - If `complete` fails, add a concrete `--verification` string.
 - If `start --parallel-write` fails, provide a `--worktree` path so write-capable agents do not share one checkout.
+- If `--apply-linear` fails with missing credentials, set `LINEAR_API_KEY` or use default dry-run mode and perform the printed MCP actions.
+- If `--apply-linear` reports a post-update confirmation failure, run `linear-agent reconcile --ledger <path>` before manually confirming the ledger.
+- If direct mode reports a read-back mismatch, run `linear-agent reconcile --ledger /path/to/EXECUTION.md` before continuing.
 - If Linear state names differ in your workspace, follow the printed MCP actions and record any mismatch in the ledger.
 
 ## Support
@@ -423,7 +469,8 @@ This project is released under the MIT License. See [LICENSE](LICENSE).
 
 ## Current Limitations
 
-- The wrapper does not call the Linear API directly. It updates the ledger and prints the required Linear MCP actions for the agent to perform and verify.
+- Direct Linear API mode currently covers issue transitions, comments, read-back verification, and ledger reconciliation. Project/label/dependency creation remains handled by the Linear MCP tools and skill workflow.
+- Default dry-run mode still updates the ledger and prints the required Linear MCP actions instead of making API calls.
 - Workspace-specific Linear state names may vary. The skill assumes simple state names such as `To Do`, `In Progress`, `Done`, and `Canceled`.
 - The included install script targets Codex-style local skill paths.
 
