@@ -1,0 +1,9 @@
+.DS_Store
+*.tmp
+*.log
+
+# Local autoresearch/campaign state
+.autoresearch/
+
+# Local execution ledgers
+.codex-linear-ledgers/

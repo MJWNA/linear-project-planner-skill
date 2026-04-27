@@ -1,0 +1,464 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+COMMAND=${1:-}
+if [ -z "$COMMAND" ]; then
+  echo "Usage: linear-agent <init|start|block|verify|complete|handoff|finalize> [args]" >&2
+  exit 2
+fi
+shift
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+SKILL_DIR=$(cd -- "$SCRIPT_DIR/.." && pwd)
+TEMPLATE="$SKILL_DIR/templates/EXECUTION.md"
+
+timestamp() {
+  TZ=Australia/Brisbane date '+%Y-%m-%d %H:%M:%S %Z'
+}
+
+usage() {
+  local code=${1:-2}
+  local output=/dev/stderr
+  if [ "$code" -eq 0 ]; then
+    output=/dev/stdout
+  fi
+
+  cat >"$output" <<'EOF'
+Usage:
+  linear-agent init --ledger PATH --project NAME --prompt TEXT [--linear-project NAME] [--repo PATH] [--base-branch BRANCH]
+  linear-agent start ISSUE --ledger PATH [--agent NAME] [--worktree PATH] [--note TEXT]
+  linear-agent block ISSUE --ledger PATH [--agent NAME] [--note TEXT] [--next TEXT]
+  linear-agent verify ISSUE --ledger PATH [--agent NAME] [--verification TEXT] [--note TEXT]
+  linear-agent complete ISSUE --ledger PATH [--agent NAME] --verification TEXT [--note TEXT]
+  linear-agent handoff --ledger PATH [--note TEXT] [--next TEXT]
+  linear-agent finalize --ledger PATH [--agent NAME] --verification TEXT [--note TEXT]
+
+This wrapper updates the companion execution ledger and prints the Linear MCP
+actions the agent must perform and read-back verify.
+EOF
+  exit "$code"
+}
+
+need_value() {
+  local flag=$1
+  local value=${2:-}
+  if [ -z "$value" ]; then
+    echo "Missing value for $flag" >&2
+    exit 2
+  fi
+}
+
+replace_line() {
+  local file=$1
+  local prefix=$2
+  local replacement=$3
+  local tmp
+
+  tmp=$(mktemp)
+  awk -v prefix="$prefix" -v replacement="$replacement" '
+    index($0, prefix) == 1 { print replacement; next }
+    { print }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+clear_activity_tbd() {
+  local file=$1
+  local tmp
+
+  tmp=$(mktemp)
+  awk '
+    /^## Activity Log$/ { in_activity=1; print; next }
+    /^## / && in_activity == 1 { in_activity=0 }
+    in_activity == 1 && $0 == "- TBD" { next }
+    { print }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+append_activity() {
+  local file=$1
+  local message=$2
+
+  clear_activity_tbd "$file"
+  if ! grep -Fq "## Activity Log" "$file"; then
+    printf '\n## Activity Log\n\n' >>"$file"
+  fi
+  printf -- '- %s - %s\n' "$(timestamp)" "$message" >>"$file"
+}
+
+set_check_item() {
+  local file=$1
+  local label=$2
+  local marker=$3
+  local replacement=$4
+  local tmp
+
+  tmp=$(mktemp)
+  awk -v label="$label" -v marker="$marker" -v replacement="$replacement" '
+    /^\- \[[ x~]\] / {
+      text=substr($0, 7)
+      if (index(text, label) == 1) {
+        print "- [" marker "] " replacement
+        next
+      }
+    }
+    { print }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+remove_empty_issue_row() {
+  local file=$1
+  local tmp
+
+  tmp=$(mktemp)
+  awk '
+    $0 == "|  |  |  |  |  |  |  |" { next }
+    { print }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+ensure_checklist_legend() {
+  local file=$1
+  local tmp
+
+  if grep -Fq "Checklist marker legend:" "$file"; then
+    return
+  fi
+
+  tmp=$(mktemp)
+  awk '
+    { print }
+    /^- Next safest action:/ {
+      print ""
+      print "Checklist marker legend: `[ ]` pending, `[x]` complete, `[~]` not applicable with a reason. During final reconciliation, do not leave conditional items unchecked if they were intentionally not needed."
+    }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+ensure_final_reconciliation_item() {
+  local file=$1
+  local tmp
+
+  if grep -Fq "Final ledger reconciliation completed" "$file"; then
+    return
+  fi
+
+  tmp=$(mktemp)
+  awk '
+    { print }
+    $0 == "- [ ] Final verification/release gate completed" || $0 == "- [x] Final verification/release gate completed" {
+      print "- [ ] Final ledger reconciliation completed"
+    }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+trim() {
+  sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+existing_worktree() {
+  local file=$1
+  local issue=$2
+  awk -F'|' -v issue="$issue" '
+    $2 ~ "^[[:space:]]*" issue "[[:space:]]*$" {
+      value=$6
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      print value
+      exit
+    }
+  ' "$file"
+}
+
+upsert_issue_row() {
+  local file=$1
+  local issue=$2
+  local linear_status=$3
+  local agent_state=$4
+  local agent=$5
+  local worktree=$6
+  local verification=$7
+  local now
+  local tmp
+
+  now=$(timestamp)
+  tmp=$(mktemp)
+  awk -v issue="$issue" \
+      -v row="| $issue | $linear_status | $agent_state | $agent | $worktree | $now | $verification |" '
+    BEGIN { replaced=0; inserted=0 }
+    $0 ~ "^\\|[[:space:]]*" issue "[[:space:]]*\\|" {
+      print row
+      replaced=1
+      next
+    }
+    /^## Decisions/ && replaced == 0 && inserted == 0 {
+      print row
+      inserted=1
+    }
+    { print }
+  ' "$file" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+print_mcp_plan() {
+  local action=$1
+  local issue=$2
+  local state=$3
+  local comment=$4
+
+  cat <<EOF
+Required Linear MCP actions:
+1. _save_issue(id="$issue", state="$state")
+2. _save_comment(issueId="$issue", body=<comment body below>)
+3. Verify with _list_issues(query="$issue") and confirm state="$state".
+4. If verification fails, leave a comment describing intended state, observed state, and next retry point.
+Transition recorded locally: $action
+
+Comment body:
+\`\`\`md
+$comment
+\`\`\`
+EOF
+}
+
+print_handoff_plan() {
+  local comment=$1
+
+  cat <<EOF
+Required Linear MCP actions:
+1. _save_comment(issueId="<active-or-operating-guide-issue>", body=<comment body below>)
+2. Verify with _list_comments(issueId="<active-or-operating-guide-issue>") and confirm the handoff comment exists.
+3. Reconcile with _list_issues(project="<project-name>") before choosing the next issue.
+4. If verification fails, retry the comment once and record the mismatch in the ledger.
+Transition recorded locally: handoff
+
+Comment body:
+\`\`\`md
+$comment
+\`\`\`
+EOF
+}
+
+print_finalize_plan() {
+  local comment=$1
+
+  cat <<EOF
+Required Linear MCP actions:
+1. _save_comment(issueId="<operating-guide-or-final-verification-issue>", body=<comment body below>)
+2. Verify with Linear project read-back that no Todo or In Progress issues remain.
+3. If any unfinished issue remains, reopen the ledger with linear-agent start/block/handoff before calling the project complete.
+Transition recorded locally: finalize
+
+Comment body:
+\`\`\`md
+$comment
+\`\`\`
+EOF
+}
+
+parse_common_transition_args() {
+  LEDGER=
+  AGENT=${AGENT:-Codex}
+  WORKTREE=${WORKTREE:-}
+  NOTE=${NOTE:-}
+  NEXT=${NEXT:-}
+  VERIFICATION=${VERIFICATION:-}
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --ledger) need_value "$1" "${2:-}"; LEDGER=$2; shift 2 ;;
+      --agent) need_value "$1" "${2:-}"; AGENT=$2; shift 2 ;;
+      --worktree) need_value "$1" "${2:-}"; WORKTREE=$2; shift 2 ;;
+      --note) need_value "$1" "${2:-}"; NOTE=$2; shift 2 ;;
+      --next) need_value "$1" "${2:-}"; NEXT=$2; shift 2 ;;
+      --verification) need_value "$1" "${2:-}"; VERIFICATION=$2; shift 2 ;;
+      *) echo "Unknown option: $1" >&2; usage ;;
+    esac
+  done
+
+  if [ -z "$LEDGER" ]; then
+    echo "Missing --ledger" >&2
+    exit 2
+  fi
+  if [ ! -f "$LEDGER" ]; then
+    echo "Ledger not found: $LEDGER" >&2
+    exit 1
+  fi
+}
+
+init_ledger() {
+  local ledger=
+  local project=
+  local prompt=
+  local linear_project=
+  local repo=
+  local base_branch=
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --ledger) need_value "$1" "${2:-}"; ledger=$2; shift 2 ;;
+      --project) need_value "$1" "${2:-}"; project=$2; shift 2 ;;
+      --prompt) need_value "$1" "${2:-}"; prompt=$2; shift 2 ;;
+      --linear-project) need_value "$1" "${2:-}"; linear_project=$2; shift 2 ;;
+      --repo) need_value "$1" "${2:-}"; repo=$2; shift 2 ;;
+      --base-branch) need_value "$1" "${2:-}"; base_branch=$2; shift 2 ;;
+      *) echo "Unknown option: $1" >&2; usage ;;
+    esac
+  done
+
+  [ -n "$ledger" ] || { echo "Missing --ledger" >&2; exit 2; }
+  [ -n "$project" ] || { echo "Missing --project" >&2; exit 2; }
+  [ -n "$prompt" ] || { echo "Missing --prompt" >&2; exit 2; }
+
+  mkdir -p "$(dirname -- "$ledger")"
+  cp "$TEMPLATE" "$ledger"
+  replace_line "$ledger" "# Linear Execution Ledger:" "# Linear Execution Ledger: $project"
+  replace_line "$ledger" "<Paste the user request" "$prompt"
+  replace_line "$ledger" "- Linear project:" "- Linear project: ${linear_project:-$project}"
+  replace_line "$ledger" "- Repository:" "- Repository: $repo"
+  replace_line "$ledger" "- Base branch:" "- Base branch: $base_branch"
+  replace_line "$ledger" "- Ledger path:" "- Ledger path: $ledger"
+  replace_line "$ledger" "- Overall status:" "- Overall status: initialized"
+  replace_line "$ledger" "- Last verified:" "- Last verified: $(timestamp)"
+  replace_line "$ledger" "- Next safest action:" "- Next safest action: create or reconcile Linear issues, then claim the first dependency-ready issue"
+  append_activity "$ledger" "Ledger initialized for $project."
+
+  echo "Ledger initialized: $ledger"
+}
+
+transition_issue() {
+  local action=$1
+  local issue=${2:-}
+  shift 2 || true
+
+  [ -n "$issue" ] || usage
+  parse_common_transition_args "$@"
+
+  local linear_status
+  local agent_state
+  local comment
+  local current_worktree
+
+  current_worktree=$(existing_worktree "$LEDGER" "$issue" | trim)
+  if [ -z "$WORKTREE" ]; then
+    WORKTREE=$current_worktree
+  fi
+
+  case "$action" in
+    start)
+      linear_status="In Progress"
+      agent_state="agent:executing"
+      comment="Started work. Agent: $AGENT. Worktree: ${WORKTREE:-n/a}. Note: ${NOTE:-claimed for execution}."
+      replace_line "$LEDGER" "- Overall status:" "- Overall status: executing"
+      replace_line "$LEDGER" "- Active issue:" "- Active issue: $issue"
+      replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"
+      replace_line "$LEDGER" "- Active worktree:" "- Active worktree: $WORKTREE"
+      replace_line "$LEDGER" "- Next safest action:" "- Next safest action: execute $issue and record verification before completion"
+      ;;
+    block)
+      linear_status="In Progress"
+      agent_state="agent:blocked"
+      comment="Blocked. Agent: $AGENT. Blocker: ${NOTE:-not specified}. Safest next action: ${NEXT:-choose another dependency-ready issue}."
+      replace_line "$LEDGER" "- Overall status:" "- Overall status: blocked"
+      replace_line "$LEDGER" "- Active issue:" "- Active issue: $issue"
+      replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"
+      replace_line "$LEDGER" "- Next safest action:" "- Next safest action: ${NEXT:-resolve blocker or choose another dependency-ready issue}"
+      ;;
+    verify)
+      linear_status="In Progress"
+      agent_state="agent:verifying"
+      comment="Verification update. Agent: $AGENT. Verification: ${VERIFICATION:-not specified}. Note: ${NOTE:-none}."
+      replace_line "$LEDGER" "- Overall status:" "- Overall status: verifying"
+      replace_line "$LEDGER" "- Active issue:" "- Active issue: $issue"
+      replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"
+      replace_line "$LEDGER" "- Next safest action:" "- Next safest action: complete $issue only after verification and Linear read-back pass"
+      ;;
+    complete)
+      [ -n "$VERIFICATION" ] || { echo "complete requires --verification" >&2; exit 2; }
+      linear_status="Done"
+      agent_state="agent:pr-ready"
+      comment="Completed. Agent: $AGENT. Verification: $VERIFICATION. Note: ${NOTE:-none}."
+      replace_line "$LEDGER" "- Overall status:" "- Overall status: issue completed"
+      replace_line "$LEDGER" "- Active issue:" "- Active issue: $issue"
+      replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"
+      replace_line "$LEDGER" "- Next safest action:" "- Next safest action: reconcile Linear, then choose the next dependency-ready issue"
+      ;;
+    *) usage ;;
+  esac
+
+  replace_line "$LEDGER" "- Last verified:" "- Last verified: $(timestamp)"
+  upsert_issue_row "$LEDGER" "$issue" "$linear_status" "$agent_state" "$AGENT" "$WORKTREE" "${VERIFICATION:-pending}"
+  append_activity "$LEDGER" "$issue $action. $comment"
+  print_mcp_plan "$action" "$issue" "$linear_status" "$comment"
+}
+
+handoff() {
+  parse_common_transition_args "$@"
+  local comment
+
+  comment="Handoff. Agent: $AGENT. Note: ${NOTE:-none}. Next: ${NEXT:-read ledger, reconcile Linear, then continue from the highest-priority unblocked issue}."
+  replace_line "$LEDGER" "- Overall status:" "- Overall status: handoff"
+  replace_line "$LEDGER" "- Last verified:" "- Last verified: $(timestamp)"
+  replace_line "$LEDGER" "- Next safest action:" "- Next safest action: ${NEXT:-read ledger, reconcile Linear, then continue from the highest-priority unblocked issue}"
+  append_activity "$LEDGER" "$comment"
+  print_handoff_plan "$comment"
+}
+
+finalize() {
+  parse_common_transition_args "$@"
+  [ -n "$VERIFICATION" ] || { echo "finalize requires --verification" >&2; exit 2; }
+
+  local comment
+
+  comment="Finalized ledger. Agent: $AGENT. Verification: $VERIFICATION. Note: ${NOTE:-none}."
+
+  ensure_checklist_legend "$LEDGER"
+  ensure_final_reconciliation_item "$LEDGER"
+
+  replace_line "$LEDGER" "- Overall status:" "- Overall status: completed"
+  replace_line "$LEDGER" "- Active issue:" "- Active issue: None"
+  replace_line "$LEDGER" "- Active agent:" "- Active agent: $AGENT"
+  replace_line "$LEDGER" "- Active worktree:" "- Active worktree: None"
+  replace_line "$LEDGER" "- Last verified:" "- Last verified: $(timestamp)"
+  replace_line "$LEDGER" "- Next safest action:" "- Next safest action: Project complete; reopen only for new findings or expanded verification scope"
+
+  set_check_item "$LEDGER" "Project created or selected" "x" "Project created or selected"
+  set_check_item "$LEDGER" "Operating guide issue created" "x" "Operating guide issue created"
+  set_check_item "$LEDGER" "Verification matrix issue created" "x" "Verification matrix issue created"
+  set_check_item "$LEDGER" "Milestones created" "x" "Milestones created"
+  set_check_item "$LEDGER" "Parent workstreams created" "x" "Parent workstreams created"
+  set_check_item "$LEDGER" "Child issues created" "x" "Child issues created"
+  set_check_item "$LEDGER" "Labels applied" "x" "Labels applied"
+  set_check_item "$LEDGER" "Dependencies/blockers linked" "~" "Dependencies/blockers linked (N/A: no blocking dependencies were required)"
+  set_check_item "$LEDGER" "Production gates created if needed" "~" "Production gates created if needed (N/A: not a production application)"
+  set_check_item "$LEDGER" "Sink/output preservation gates created if needed" "~" "Sink/output preservation gates created if needed (N/A: no sync or output sink in scope)"
+  set_check_item "$LEDGER" "Project status update or operating-guide comment posted" "x" "Project status update or operating-guide comment posted"
+
+  set_check_item "$LEDGER" "First issue chosen by dependency order" "x" "First issue chosen by dependency order"
+  set_check_item "$LEDGER" "Active issue moved to In Progress" "x" "Active issue moved to In Progress"
+  set_check_item "$LEDGER" "Active issue acknowledgement comment posted" "x" "Active issue acknowledgement comment posted"
+  set_check_item "$LEDGER" "Worktree or workspace recorded" "x" "Worktree or workspace recorded"
+  set_check_item "$LEDGER" "Verification run recorded" "x" "Verification run recorded"
+  set_check_item "$LEDGER" "Completion comment posted" "x" "Completion comment posted"
+  set_check_item "$LEDGER" "Active issue moved to Done only after verification" "x" "Active issue moved to Done only after verification"
+  set_check_item "$LEDGER" "Follow-up issues created or linked" "x" "Follow-up issues created or linked"
+  set_check_item "$LEDGER" "Final verification/release gate completed" "x" "Final verification/release gate completed"
+  set_check_item "$LEDGER" "Final ledger reconciliation completed" "x" "Final ledger reconciliation completed"
+
+  remove_empty_issue_row "$LEDGER"
+  append_activity "$LEDGER" "$comment"
+  print_finalize_plan "$comment"
+}
+
+case "$COMMAND" in
+  init) init_ledger "$@" ;;
+  start|block|verify|complete) transition_issue "$COMMAND" "$@" ;;
+  handoff) handoff "$@" ;;
+  finalize) finalize "$@" ;;
+  -h|--help|help) usage 0 ;;
+  *) usage ;;
+esac
