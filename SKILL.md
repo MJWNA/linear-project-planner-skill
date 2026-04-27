@@ -170,6 +170,15 @@ Keep the graph sparse. Normal child issues should usually have 3-7 high-signal l
 
 Use this rule: links should compress context, not clutter tasks. If a link does not affect implementation, sequencing, verification, or recovery, leave it out.
 
+If Linear issue creation, relationship creation, or project documents are blocked by workspace limits or tool availability, preserve the intended sparse graph in the companion ledger and, when possible, the Linear project description. Record:
+
+- the guide issues, parent workstreams, and child issues still to create
+- intended `blocks`, `blockedBy`, and `relatedTo` edges
+- docs, source, PR, commit, evaluator, and ledger URLs that future agents need
+- the exact blocker and the retry point
+
+Mark those graph actions as blocked or `[~]` not applicable with a reason. Do not mark them complete until Linear read-back proves they exist.
+
 ## Required Guide Issues
 
 Always add these two guide issues:
@@ -235,6 +244,15 @@ Create final issues such as:
 - `Run auto-research failure discovery loop`
 - `Create follow-up tasks for failed checks`
 - `Re-run final evaluator until stable`
+
+Make the final validation task shape concrete:
+
+- freeze the evaluator command and pass threshold before the loop
+- capture the baseline score/result in the ledger
+- run focused failure probes or experiments one at a time
+- keep only changes that preserve correctness and improve or maintain the score
+- create or link follow-up tasks for every failed, blocked, or inconclusive binary check
+- repeat until the evaluator is stable across repeated passes and no high-priority binary failures remain
 
 Do not let agents mutate the evaluator during the final validation loop unless the task is explicitly to fix an invalid evaluator. Changing the evaluator mid-loop invalidates prior results.
 
@@ -318,6 +336,8 @@ Use it for:
 `linear-agent init` refuses to overwrite an existing ledger unless `--force` is passed. Use `--force` only when replacing the prior ledger is intentional.
 
 `linear-agent finalize` requires explicit dependency, production, and sink/output gate outcomes. Use `satisfied` when the gate was completed, or `not-applicable:<reason>` when the gate genuinely does not apply.
+
+`linear-agent finalize` must fail closed. It should only be used when the Issue Progress table contains real completed issue rows and every row is `Done` or `Completed`. Empty tables, `Todo`, `In Progress`, `Missing in Linear`, `Canceled`, blocked rows, or reconciliation drift mean the correct action is to record the blocker or follow-up, not finalize the project.
 
 After running the wrapper in default dry-run mode, perform the printed Linear MCP actions using structured Linear tools, then verify with a read-back call. In direct mode, verify the CLI output says the Linear transition was applied and read-back verified. If direct mode fails, record the mismatch and run `linear-agent reconcile` before choosing the next issue.
 

@@ -412,6 +412,11 @@ def parse_ledger_rows(path: Path) -> list[dict[str, str]]:
 def reconcile(ledger: Path) -> int:
     client = LinearClient.from_env()
     rows = parse_ledger_rows(ledger)
+    if not rows:
+        print("empty | ledger has no issue rows")
+        print("Reconcile complete: 0 match, 0 mismatch")
+        return 1
+
     mismatches = 0
     for row in rows:
         try:

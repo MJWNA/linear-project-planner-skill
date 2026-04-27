@@ -182,6 +182,28 @@ cat >"$FAKE_STATE" <<'JSON'
 }
 JSON
 
+EMPTY_RECONCILE_LEDGER="$TMP_DIR/empty-reconcile-ledger.md"
+"$BIN" init \
+  --ledger "$EMPTY_RECONCILE_LEDGER" \
+  --project "Empty Reconcile" \
+  --prompt "Exercise empty reconcile guard" \
+  >"$TMP_DIR/empty-reconcile-init.out"
+
+set +e
+LINEAR_AGENT_TEST_MODE=1 \
+LINEAR_AGENT_FAKE_STATE="$FAKE_STATE" "$BIN" reconcile \
+  --ledger "$EMPTY_RECONCILE_LEDGER" \
+  >"$TMP_DIR/empty-reconcile.out"
+empty_reconcile_rc=$?
+set -e
+
+if [ "$empty_reconcile_rc" -eq 0 ]; then
+  echo "Expected reconcile against an empty Issue Progress table to fail" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/empty-reconcile.out" "empty | ledger has no issue rows"
+assert_contains "$EMPTY_RECONCILE_LEDGER" "- Overall status: reconciliation drift found"
+
 LINEAR_AGENT_TEST_MODE=1 \
 LINEAR_AGENT_FAKE_STATE="$FAKE_STATE" \
 LINEAR_AGENT_FAKE_REQUESTS="$FAKE_REQUESTS" \
@@ -211,6 +233,54 @@ if [ "$reconcile_rc" -eq 0 ]; then
 fi
 assert_contains "$TMP_DIR/reconcile.out" "match | MAS-999 | In Progress"
 assert_contains "$LEDGER" "Linear reconciliation found drift. Summary:"
+
+CANCELED_LEDGER="$TMP_DIR/canceled-reconcile-ledger.md"
+"$BIN" init \
+  --ledger "$CANCELED_LEDGER" \
+  --project "Canceled Reconcile" \
+  --prompt "Exercise canceled issue mapping" \
+  >"$TMP_DIR/canceled-init.out"
+"$BIN" complete MAS-321 \
+  --ledger "$CANCELED_LEDGER" \
+  --agent "Codex" \
+  --verification "pre-canceled local completion" \
+  >"$TMP_DIR/canceled-complete.out"
+CANCELED_STATE="$TMP_DIR/canceled-linear-state.json"
+cat >"$CANCELED_STATE" <<'JSON'
+{
+  "states": [],
+  "issues": {
+    "MAS-321": {
+      "id": "issue-321",
+      "identifier": "MAS-321",
+      "title": "Canceled issue",
+      "description": "",
+      "url": "https://linear.app/example/MAS-321",
+      "state": {"id": "canceled", "name": "Canceled", "type": "canceled"},
+      "team": {"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"},
+      "project": {"id": "project", "name": "Project", "url": "https://linear.app/project"},
+      "comments": {"nodes": []},
+      "updatedAt": "2026-04-28T00:00:00+10:00"
+    }
+  }
+}
+JSON
+
+set +e
+LINEAR_AGENT_TEST_MODE=1 \
+LINEAR_AGENT_FAKE_STATE="$CANCELED_STATE" "$BIN" reconcile \
+  --ledger "$CANCELED_LEDGER" \
+  >"$TMP_DIR/canceled-reconcile.out"
+canceled_reconcile_rc=$?
+set -e
+
+if [ "$canceled_reconcile_rc" -eq 0 ]; then
+  echo "Expected canceled mismatch to require human/blocker review" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/canceled-reconcile.out" "mismatch | MAS-321 | ledger=Done | linear=Canceled"
+assert_contains "$CANCELED_LEDGER" "| MAS-321 | Canceled | agent:blocked | Codex |"
+assert_not_contains "$CANCELED_LEDGER" "| MAS-321 | Canceled | agent:pr-ready |"
 
 FAILING_LEDGER="$TMP_DIR/failing-direct-ledger.md"
 "$BIN" init \
@@ -373,6 +443,16 @@ if [ "$(grep -Ec '^\| MAS-123 \|' "$LEDGER")" -ne 1 ]; then
   exit 1
 fi
 
+for issue in MAS-999 MAS-124 MAS-125; do
+  "$BIN" complete "$issue" \
+    --ledger "$LEDGER" \
+    --agent "Codex" \
+    --verification "dogfood regression row closed for finalize test" \
+    --note "Closed before project-level finalize" \
+    >"$TMP_DIR/complete-$issue.out"
+  assert_contains "$LEDGER" "| $issue | Done | agent:pr-ready | Codex |"
+done
+
 "$BIN" handoff \
   --ledger "$LEDGER" \
   --note "Ready for next session" \
@@ -393,6 +473,40 @@ awk '
 mv "$TMP_DIR/legacy-ledger.md" "$LEDGER"
 assert_not_contains "$LEDGER" "Checklist marker legend:"
 assert_not_contains "$LEDGER" "Final ledger reconciliation completed"
+
+ACTIVE_FINALIZE_LEDGER="$TMP_DIR/active-finalize-ledger.md"
+"$BIN" init \
+  --ledger "$ACTIVE_FINALIZE_LEDGER" \
+  --project "Active Finalize Guard" \
+  --prompt "Exercise unfinished finalize guard" \
+  >"$TMP_DIR/active-finalize-init.out"
+"$BIN" start MAS-777 \
+  --ledger "$ACTIVE_FINALIZE_LEDGER" \
+  --agent "Codex" \
+  --worktree "$TMP_DIR/active-worktree" \
+  --note "Still active" \
+  >"$TMP_DIR/active-finalize-start.out"
+
+set +e
+"$BIN" finalize \
+  --ledger "$ACTIVE_FINALIZE_LEDGER" \
+  --agent "Codex" \
+  --verification "should fail while row is active" \
+  --linear-reconciled \
+  --dependencies "not-applicable:no blocking dependencies were required" \
+  --production-gates "not-applicable:not a production application" \
+  --sink-gates "not-applicable:no sync or output sink in scope" \
+  >"$TMP_DIR/active-finalize.out" 2>&1
+active_finalize_rc=$?
+set -e
+
+if [ "$active_finalize_rc" -eq 0 ]; then
+  echo "Expected finalize with unfinished issue rows to fail" >&2
+  exit 1
+fi
+assert_contains "$TMP_DIR/active-finalize.out" "finalize refuses unfinished issue rows"
+assert_contains "$TMP_DIR/active-finalize.out" "- MAS-777 is In Progress (agent:executing)"
+assert_not_contains "$ACTIVE_FINALIZE_LEDGER" "- Overall status: completed"
 
 "$BIN" finalize \
   --ledger "$LEDGER" \

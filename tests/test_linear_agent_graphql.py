@@ -254,6 +254,38 @@ class LinearAgentGraphQLTests(unittest.TestCase):
             self.assertEqual(result.returncode, 1)
             self.assertIn("mismatch | MAS-123 | ledger=Done | linear=In Progress", result.stdout)
 
+    def test_reconcile_empty_ledger_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = Path(tmp) / "state.json"
+            ledger_path = Path(tmp) / "EXECUTION.md"
+            fake_state(state_path, "In Progress")
+            ledger_path.write_text(
+                """# Ledger
+
+## Issue Progress
+
+| Issue | Linear Status | Agent State | Owner/Agent | Worktree | Last Update | Verification |
+|---|---|---|---|---|---|---|
+|  |  |  |  |  |  |  |
+
+## Decisions
+""",
+                encoding="utf-8",
+            )
+
+            result = self.run_module(
+                "reconcile",
+                "--ledger",
+                str(ledger_path),
+                env={
+                    "LINEAR_AGENT_TEST_MODE": "1",
+                    "LINEAR_AGENT_FAKE_STATE": str(state_path),
+                },
+            )
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("empty | ledger has no issue rows", result.stdout)
+
     def test_rejects_unsafe_endpoint_override_by_default(self) -> None:
         result = self.run_module(
             "apply-transition",

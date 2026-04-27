@@ -8,6 +8,10 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 - Added sparse link graph guidance for high-signal task, docs, PR, ledger, and verification references.
 - Added final auto-research validation task guidance for binary/frozen evaluator checks before project completion.
+- Hardened `linear-agent finalize` so it refuses empty ledgers and unfinished issue rows.
+- Hardened `linear-agent reconcile` so empty Issue Progress tables fail closed instead of reporting success.
+- Changed canceled Linear issue reconciliation to `agent:blocked` instead of `agent:pr-ready`.
+- Documented fallback sparse-link graph handling when Linear issue or relationship creation is blocked.
 
 ## 2.0.0 - 2026-04-28
 
