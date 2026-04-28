@@ -6,7 +6,13 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
-- Nothing yet.
+- Added an explicit safe-parallelism contract requiring repeated checkpoints,
+  dependency/write-scope/risk/verification grouping, worktree-safe parallel
+  agents, bounded context-isolation agents, serial-constraint explanations, and
+  follow-up issue splitting.
+- Expanded execution references and the companion ledger template with concrete
+  safe-parallelism allocation fields and checkpoint recording.
+- Added front-door evaluator coverage for the safe-parallelism contract.
 
 ## 3.1.0 - 2026-04-28
 

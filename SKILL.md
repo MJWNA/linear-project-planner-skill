@@ -39,8 +39,9 @@ future agent:
    inside the Linear plan when the user is asking for a Linear project. Minimal
    repo inspection needed to shape the plan is allowed before issue creation;
    substantive findings belong in tracked issues.
-4. Claim one issue at a time with `linear-agent start`; use separate branches
-   and worktrees for independent write-capable agents.
+4. Run a safe parallelism checkpoint after project creation or read-back, then
+   claim work with `linear-agent start`; use separate branches and worktrees for
+   independent write-capable agents.
 5. Verify every issue before `linear-agent complete`, then mirror the Linear
    status/comment and read it back.
 6. Run final verification, reconcile Linear, and finalize only with explicit
@@ -52,9 +53,11 @@ Load deeper references only when the current task needs them:
 
 - `references/operator-cheatsheet.md`: one-page minimal safe path.
 - `references/project-structure.md`: milestones, labels, parent issues, child
-  issue template, sparse link graph, and research-as-planned-work template.
+  issue template, safe parallelism planning, sparse link graph, and
+  research-as-planned-work template.
 - `references/execution-hygiene.md`: companion ledger, `linear-agent`,
-  issue-state hygiene, worktrees, completion comments, and finalization.
+  issue-state hygiene, safe parallelism checkpoints, worktrees, completion
+  comments, and finalization.
 - `references/validation-modes.md`: standard validation, optional deep
   auto-research validation, production gates, and sink/output preservation.
 - `references/trigger-preservation.md`: trigger-safe front-door contract for
@@ -99,9 +102,10 @@ Always add these two guide issues:
 
 ### Guide: Agent Operating Guide
 
-Include how to choose work, dependency order, branch/worktree expectations,
-dirty worktree warnings, docs lookup expectations, Linear update rules, ledger
-path, handoff expectations, and the first safest issue.
+Include how to choose work, safe parallelism checkpoint cadence, dependency
+order, branch/worktree expectations, dirty worktree warnings, docs lookup
+expectations, Linear update rules, ledger path, handoff expectations, and the
+first safest issue.
 
 ### Guide: Verification Matrix
 
@@ -177,6 +181,8 @@ requires `LINEAR_AGENT_TEST_MODE=1`.
 - Add an acknowledgement comment before long-running work.
 - Add progress comments for material discoveries, blockers, or handoffs.
 - Keep blockers, related issues, duplicates, and follow-ups current.
+- Re-run the safe parallelism checkpoint after material issue completions,
+  blockers, or scope changes.
 - Do not mark an issue `Done` until acceptance criteria and verification pass.
 - Completion comments must include changed/inspected files, checks run, result,
   residual risks, and follow-ups.
@@ -187,9 +193,31 @@ requires `LINEAR_AGENT_TEST_MODE=1`.
 
 ## Parallel Work
 
-Use `parallel-safe` only when write scopes and behavior contracts do not overlap.
-For write-capable parallel agents, assign one Linear issue, one branch, one
-worktree, one explicit write set, and non-owned areas the agent must not edit.
+Default to looking for safe parallel execution opportunities. Run a safe
+parallelism checkpoint after creating or reading a Linear project, and repeat it
+after material issue completions, blockers, or scope changes.
+
+At each checkpoint:
+
+- Identify independent, unblocked `agent-ready` issues.
+- Group candidate issues by dependency order, write scope, risk, and
+  verification overlap.
+- Spawn as many parallel agents as safely useful when ownership is clear.
+- Use `parallel-safe` only when write scopes and behavior contracts do not overlap.
+- For write-capable parallel agents, assign one Linear issue, one branch, one
+  worktree, one owned write scope, explicit non-owned areas, and one
+  verification command.
+- Use bounded read-only or context-heavy agents for context isolation when
+  research, audit, read-back, verification, large docs, logs, diffs, issue
+  histories, or reference material would otherwise overload coordinator context.
+- Keep the coordinator responsible for decisions, integration, Linear state,
+  dependencies, comments, ledger updates, and final verification.
+- Explain serial execution decisions by naming the exact constraint: dependency,
+  shared file/module, unclear ownership, production/sink gate, verification
+  coupling, or coordinator-level decision context.
+- Create follow-up Linear issues when work must be split before safe parallel
+  execution.
+
 If write scopes overlap, mark issues `serial-required` or `overlap-zone` until
 the coordinator reconciles ownership.
 
@@ -224,5 +252,5 @@ explicitly changes it.
 
 After project creation or restructuring, post a project status update or
 operating-guide comment summarizing the issue range, highest-priority gates,
-serial dependencies, production risks, first execution order, and companion
-ledger path.
+serial dependencies or exact serial constraints, safe parallel batches,
+production risks, first execution order, and companion ledger path.

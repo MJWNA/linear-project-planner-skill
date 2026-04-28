@@ -83,8 +83,14 @@ def contains_all(path: str, phrases: tuple[str, ...]) -> tuple[bool, str]:
 def main() -> int:
     skill = read("SKILL.md")
     trigger_contract = read("references/trigger-preservation.md")
+    execution_hygiene = read("references/execution-hygiene.md")
+    project_structure = read("references/project-structure.md")
+    ledger_template = read("templates/EXECUTION.md")
     fm = frontmatter(skill)
     front_door_text = section_before(skill, "## First Pass")
+    parallelism_text = " ".join(
+        (skill, execution_hygiene, project_structure, ledger_template)
+    )
 
     checks: list[tuple[str, int, bool, str]] = []
 
@@ -199,6 +205,39 @@ def main() -> int:
     )
     ok, detail = contains_all("SKILL.md", mapped_phrases)
     checks.append(("legacy deep guidance mapped to references", 10, ok, detail))
+
+    safe_parallelism_concepts = {
+        "checkpoint cadence": (
+            "safe parallelism checkpoint",
+            "after project creation/read-back",
+        ),
+        "agent-ready candidates": ("independent, unblocked `agent-ready` issues",),
+        "candidate grouping": (
+            "dependency order, write scope, risk, and verification overlap",
+            "dependency/write scope/risk/verification overlap",
+        ),
+        "worktree isolation": ("one branch, one worktree", "branches/worktrees"),
+        "assignment contract": (
+            "owned write scope",
+            "non-owned areas",
+            "verification command",
+        ),
+        "context isolation": ("context isolation", "coordinator context"),
+        "coordinator ownership": (
+            "coordinator responsible for decisions",
+            "coordinator-level decisions",
+        ),
+        "serial constraints": (
+            "shared file/module",
+            "unclear ownership",
+            "production/sink gate",
+            "verification coupling",
+            "coordinator-level decision context",
+        ),
+        "follow-up splitting": ("create follow-up Linear issues", "follow-up issues"),
+    }
+    ok, detail = check_concepts(parallelism_text, safe_parallelism_concepts)
+    checks.append(("safe parallelism contract", 15, ok, detail))
 
     score = 0
     max_score = sum(points for _, points, _, _ in checks)

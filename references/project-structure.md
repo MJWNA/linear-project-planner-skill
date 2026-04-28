@@ -97,8 +97,31 @@ What is wrong, risky, or missing.
 ## Agent Notes
 - Parallel-safe or serial-required.
 - Known overlap files/modules.
+- Owned write scope and non-owned areas.
+- Required verification command.
 - Follow-up/backfill/migration notes.
 ```
+
+## Safe Parallelism Planning
+
+After project creation/read-back, mark a checkpoint in the operating guide or
+ledger. Repeat the checkpoint after material completions, blockers, or scope
+changes.
+
+Checkpoint questions:
+
+- Which `agent-ready` issues are independent and unblocked?
+- What is the dependency order, write scope, risk level, and verification
+  overlap?
+- Which issues need separate branches/worktrees for write-capable agents?
+- Which read-only/context-heavy tasks can run in bounded parallel for context
+  isolation across research, audit, read-back, verification, large
+  docs/logs/diffs, issue histories, or reference material?
+- Does any issue need splitting into follow-ups before safe parallel execution?
+
+Mark issues `serial-required` when they have dependencies, shared files/modules,
+unclear ownership, production or sink gates, verification coupling, or
+coordinator-level decision context.
 
 ## Research As Planned Work
 

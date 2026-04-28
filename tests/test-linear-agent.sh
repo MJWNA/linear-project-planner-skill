@@ -78,7 +78,8 @@ assert_contains "$LEDGER" "Checklist marker legend:"
 assert_contains "$LEDGER" "- [ ] Final ledger reconciliation completed"
 assert_contains "$LEDGER" "## Parallel Agent Allocation"
 assert_contains "$LEDGER" "Separate git worktrees are required unless the work is read-only"
-assert_contains "$LEDGER" "| Issue | Agent | Branch | Worktree | Ownership Boundary | Status | Merge/Reconcile Notes |"
+assert_contains "$LEDGER" "| Issue | Agent | Mode | Branch | Worktree | Owned Write Scope | Non-Owned Areas | Verification Command | Status | Merge/Reconcile Notes |"
+assert_contains "$LEDGER" "Read-only/context-heavy parallel tasks for context isolation"
 if [ "$(grep -Fc -- "- TBD" "$LEDGER")" -lt 4 ]; then
   echo "Expected non-activity section placeholders to remain after init" >&2
   cat "$LEDGER" >&2

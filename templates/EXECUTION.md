@@ -39,6 +39,7 @@ Checklist marker legend: `[ ]` pending, `[x]` complete, `[~]` not applicable wit
 - [ ] Dependencies/blockers linked
 - [ ] Production gates created if needed
 - [ ] Sink/output preservation gates created if needed
+- [ ] Safe parallelism checkpoint recorded after project read-back
 - [ ] Project status update or operating-guide comment posted
 
 ## Execution Checklist
@@ -47,6 +48,7 @@ Checklist marker legend: `[ ]` pending, `[x]` complete, `[~]` not applicable wit
 - [ ] Active issue moved to In Progress
 - [ ] Active issue acknowledgement comment posted
 - [ ] Worktree or workspace recorded
+- [ ] Safe parallelism checkpoint recorded after material completion/blocker/scope change
 - [ ] Verification run recorded
 - [ ] Completion comment posted
 - [ ] Active issue moved to Done only after verification
@@ -56,11 +58,23 @@ Checklist marker legend: `[ ]` pending, `[x]` complete, `[~]` not applicable wit
 
 ## Parallel Agent Allocation
 
-Fill this section before dispatching parallel write-capable agents. Separate git worktrees are required unless the work is read-only.
+Fill this section before dispatching parallel agents. Write-capable agents need
+separate branches/worktrees and exact ownership. Read-only/context-heavy agents
+must be bounded by scope or time.
+Separate git worktrees are required unless the work is read-only.
 
-| Issue | Agent | Branch | Worktree | Ownership Boundary | Status | Merge/Reconcile Notes |
-|---|---|---|---|---|---|---|
-|  |  |  |  |  |  |  |
+| Issue | Agent | Mode | Branch | Worktree | Owned Write Scope | Non-Owned Areas | Verification Command | Status | Merge/Reconcile Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| TBD | TBD | write/read-only | TBD | TBD | TBD | TBD | TBD | queued | TBD |
+
+## Safe Parallelism Decisions
+
+- Candidate `agent-ready` issues:
+- Grouping by dependency/write scope/risk/verification overlap:
+- Read-only/context-heavy parallel tasks for context isolation:
+- Serial-required issues and reason:
+- Follow-up issues needed before safe parallel execution:
+- Coordinator decisions, integration, Linear state, dependencies, comments, ledger updates, and final verification owner:
 
 ## Issue Progress
 

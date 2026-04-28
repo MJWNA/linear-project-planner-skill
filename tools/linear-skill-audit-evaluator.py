@@ -58,7 +58,13 @@ def main() -> int:
         and contains(".github/workflows/ci.yml", "shellcheck"),
         "frozen_evaluator": run([sys.executable, "tools/linear-agent-evaluator.py"]),
         "parallel_agent_safety": contains("lib/linear_agent/cli.py", "allocate")
-        and contains("lib/linear_agent/graph.py", "overlapping_write_sets"),
+        and contains("lib/linear_agent/graph.py", "overlapping_write_sets")
+        and contains("SKILL.md", "safe parallelism checkpoint")
+        and contains("SKILL.md", "context isolation")
+        and contains("SKILL.md", "coordinator-level decision context")
+        and contains("references/execution-hygiene.md", "Safe Parallelism Checkpoints")
+        and contains("references/project-structure.md", "Safe Parallelism Planning")
+        and contains("templates/EXECUTION.md", "Safe Parallelism Decisions"),
         "production_sink_gates": exists("templates/production-gates.md")
         and contains("lib/linear_agent/cli.py", "inventory"),
         "documentation": exists("docs/examples/local-skill-audit.md")
