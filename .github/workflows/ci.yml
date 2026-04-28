@@ -30,7 +30,7 @@ jobs:
           shellcheck install.sh scripts/linear-agent tests/test-linear-agent.sh
 
       - name: Python syntax
-        run: python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/ledger.py lib/linear_agent/graphql.py lib/linear_agent/graph.py lib/linear_agent/cli.py tools/linear-agent-evaluator.py tools/linear-skill-audit-evaluator.py
+        run: python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/ledger.py lib/linear_agent/graphql.py lib/linear_agent/graph.py lib/linear_agent/cli.py tools/linear-front-door-evaluator.py tools/linear-agent-evaluator.py tools/linear-skill-audit-evaluator.py
 
       - name: YAML syntax
         run: |
@@ -46,6 +46,7 @@ jobs:
           bash tests/test-linear-agent.sh
           python3 -m unittest tests/test_linear_agent_graphql.py
           python3 -m unittest tests/test_linear_agent_graph_features.py
+          python3 tools/linear-front-door-evaluator.py
           python3 tools/linear-agent-evaluator.py
           python3 tools/linear-skill-audit-evaluator.py
 
@@ -67,6 +68,7 @@ jobs:
             lib/linear_agent/graph.py \
             lib/linear_agent/cli.py \
             lib/linear_agent/graphql.py \
+            tools/linear-front-door-evaluator.py \
             tools/linear-agent-evaluator.py \
             tools/linear-skill-audit-evaluator.py \
             agents/openai.yaml \
@@ -75,10 +77,17 @@ jobs:
             .github/workflows/live-linear-smoke.yml \
             .github/workflows/release.yml \
             references/command-schemas.md \
+            references/execution-hygiene.md \
             references/operator-cheatsheet.md \
+            references/project-structure.md \
             references/repository-hardening.md \
+            references/trigger-preservation.md \
+            references/validation-modes.md \
+            docs/claude-portability.md \
             docs/linear-token-scope.md \
+            docs/manual-linear-smoke.md \
             docs/migration-guide.md \
+            docs/research/skill-front-door-context-loading.md \
             docs/examples/local-skill-audit.md \
             docs/examples/production-hardening-project.md \
             docs/examples/parallel-remediation-project.md \
