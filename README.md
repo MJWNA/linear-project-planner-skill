@@ -3,7 +3,7 @@
 [![CI](https://github.com/MJWNA/linear-project-planner-skill/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MJWNA/linear-project-planner-skill/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/MJWNA/linear-project-planner-skill?style=flat)](LICENSE)
 
-Agent-ready Linear project planning, execution tracking, and cross-session handoff for Codex-style skill runtimes.
+Agent-ready Linear project planning, execution tracking, and cross-session handoff for Codex-first, Claude-compatible skill runtimes.
 
 This skill helps an AI agent turn a Linear project into a real execution system. Instead of producing a flat backlog and hoping future agents remember what happened, it creates a structured operating model: milestones, parent workstreams, guide issues, labels, verification gates, issue-state hygiene, and a companion Markdown execution ledger that survives context resets.
 
@@ -77,15 +77,28 @@ The shortest safe operating flow is:
 
 1. Read local project rules and create or open the companion ledger.
 2. Create the Linear project with guide issues, parent workstreams, child issues, labels, dependencies, and sparse links.
-3. Claim one issue at a time with `linear-agent start`; use separate worktrees for independent write-capable agents.
-4. Verify each issue before `linear-agent complete`, then mirror the Linear status/comment and read it back.
-5. Run standard final verification, reconcile Linear, and finalize only with explicit evidence. Use the deeper auto-research loop only when it was explicitly requested, approved during planning, or clearly triggered by the user's wording.
+3. Put user-requested research, source review, audits, and exploratory discovery inside the Linear plan when the user is asking for a Linear project.
+4. Claim one issue at a time with `linear-agent start`; use separate worktrees for independent write-capable agents.
+5. Verify each issue before `linear-agent complete`, then mirror the Linear status/comment and read it back.
+6. Run standard final verification, reconcile Linear, and finalize only with explicit evidence. Use the deeper auto-research loop only when it was explicitly requested, approved during planning, or clearly triggered by the user's wording.
+
+### Trigger-Safe Progressive Disclosure
+
+The skill uses trigger-safe progressive disclosure: `SKILL.md` stays as a compact routing and operating front door, while longer contracts live in referenced files that agents load only when needed.
+
+The front door intentionally keeps trigger language visible for prompts such as "create a Linear project", "run the Linear skill", "execute a Linear plan", "audit remediation", "companion ledger", "verification gates", and Codex or Claude agent coordination. It also keeps a negative boundary for simple one-off Linear issue lookups so the planner does not compete with ordinary Linear search or update workflows.
+
+The research basis for this approach is recorded in [docs/research/skill-front-door-context-loading.md](docs/research/skill-front-door-context-loading.md), and the maintenance contract is in [references/trigger-preservation.md](references/trigger-preservation.md).
 
 ### Reference Map
 
 The skill keeps the front-door instructions compact and moves deeper contracts into focused references:
 
 - `SKILL.md`: project design and execution contract.
+- `references/trigger-preservation.md`: trigger-safe front-door contract.
+- `references/project-structure.md`: milestones, labels, parent issues, child issue template, sparse link graph, and research-as-planned-work template.
+- `references/execution-hygiene.md`: companion ledger, `linear-agent`, issue-state hygiene, worktrees, completion comments, and finalization.
+- `references/validation-modes.md`: standard validation, optional deep auto-research validation, production gates, and sink/output preservation.
 - `templates/EXECUTION.md`: living ledger template.
 - `scripts/linear-agent`: shell CLI for ledger transitions, direct Linear mode, reconciliation, and finalization.
 - `references/command-schemas.md`: proposed `linear_project.*` structured tool contract.
@@ -93,6 +106,8 @@ The skill keeps the front-door instructions compact and moves deeper contracts i
 - `references/operator-cheatsheet.md`: one-page operator path and minimal safe issue set.
 - `references/repository-hardening.md`: CI, release, CodeQL, branch/ruleset, and solo-maintainer hardening policy.
 - `templates/production-gates.md`: reusable production and sink inventory gates for common project types.
+- `docs/claude-portability.md`: Codex-first and Claude-compatible runtime positioning.
+- `docs/manual-linear-smoke.md`: manual live Linear smoke-test release gate pattern.
 - `docs/examples/`: worked examples for local audits, production hardening, and parallel remediation.
 - `tests/fixtures/linear_issue_templates.md`: expected issue and final comment shapes for agent-output evaluation.
 
@@ -485,14 +500,21 @@ It is especially useful for:
 │       ├── graphql.py
 │       └── ledger.py
 ├── docs/
+│   ├── claude-portability.md
 │   ├── examples/
+│   ├── research/
 │   ├── linear-token-scope.md
+│   ├── manual-linear-smoke.md
 │   └── migration-guide.md
 ├── references/
 │   ├── command-schemas.md
+│   ├── execution-hygiene.md
 │   ├── operator-cheatsheet.md
+│   ├── project-structure.md
 │   ├── repository-hardening.md
-│   └── runtime-state.md
+│   ├── runtime-state.md
+│   ├── trigger-preservation.md
+│   └── validation-modes.md
 ├── scripts/
 │   └── linear-agent
 ├── templates/
@@ -504,7 +526,9 @@ It is especially useful for:
 │   ├── test_linear_agent_graph_features.py
 │   └── test_linear_agent_graphql.py
 └── tools/
-    └── linear-agent-evaluator.py
+    ├── linear-agent-evaluator.py
+    ├── linear-front-door-evaluator.py
+    └── linear-skill-audit-evaluator.py
 ```
 
 ## Quick Start
@@ -570,7 +594,23 @@ Direct Linear automation is configured with environment variables:
 
 ### Portability
 
+This repo is Codex-first and Claude-compatible.
+
+Codex-first means the installer targets `~/.codex/skills/linear-project-planner`, installs `linear-agent` into `~/.local/bin`, and includes `agents/openai.yaml` metadata for Codex runtimes.
+
+Claude-compatible means the skill follows the shared `SKILL.md` plus references/scripts shape and can be installed manually under `~/.claude/skills/linear-project-planner`. The Python CLI and ledger format are runtime-neutral. Full Claude parity would need a first-class Claude install target and runtime-specific MCP/tooling notes.
+
+See [docs/claude-portability.md](docs/claude-portability.md) for the exact support matrix.
+
 The skill is tested on macOS/Linux style shells. On Windows, use WSL with Bash and Python 3, then run the repo checkout directly or install into the WSL home directory. For no-install mode, run `scripts/linear-agent` from the repo checkout.
+
+### Manual Linear Smoke Tests
+
+Normal CI uses hermetic fake Linear transport so pull requests do not mutate a real Linear workspace or require secrets. Live Linear smoke testing is intentionally manual and secret-gated because it creates or updates real workspace objects, consumes API quota, and needs a disposable target project.
+
+Run the manual smoke workflow for release candidates, GraphQL transport changes, state transition changes, install/runtime changes, or before major version releases. Record the disposable target, commands, cleanup, and result in the release notes or Linear verification issue.
+
+See [docs/manual-linear-smoke.md](docs/manual-linear-smoke.md) for the checklist and evidence pattern.
 
 ## Testing
 
@@ -580,11 +620,12 @@ Run the regression suite:
 bash tests/test-linear-agent.sh
 python3 -m unittest tests/test_linear_agent_graphql.py
 python3 -m unittest tests/test_linear_agent_graph_features.py
+python3 tools/linear-front-door-evaluator.py
 python3 tools/linear-agent-evaluator.py
 python3 tools/linear-skill-audit-evaluator.py
 ```
 
-The evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 130/130`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
+The front-door evaluator protects trigger reliability after `SKILL.md` changes. The main evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 130/130`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
 
 Run syntax checks:
 
@@ -592,7 +633,7 @@ Run syntax checks:
 bash -n install.sh
 bash -n scripts/linear-agent
 bash -n tests/test-linear-agent.sh
-python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/ledger.py lib/linear_agent/graphql.py lib/linear_agent/graph.py lib/linear_agent/cli.py tools/linear-agent-evaluator.py tools/linear-skill-audit-evaluator.py
+python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/ledger.py lib/linear_agent/graphql.py lib/linear_agent/graph.py lib/linear_agent/cli.py tools/linear-front-door-evaluator.py tools/linear-agent-evaluator.py tools/linear-skill-audit-evaluator.py
 ```
 
 Optional, if installed locally:
@@ -608,6 +649,8 @@ Current production release: `v3.0.0`.
 The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases use the manual release workflow after a known-good commit is tagged, [CHANGELOG.md](CHANGELOG.md) is updated, and CI passes.
 
 The repository includes GitHub Actions workflows for CI, CodeQL, a manual release gate, and a manual live Linear smoke check. CI runs shell syntax, shellcheck, Python syntax, YAML parsing, secret scanning, regression tests, fake Linear GraphQL tests, graph feature tests, evaluators, and trailing-whitespace checks on every push and pull request.
+
+The live Linear smoke workflow is not expected to run on every pull request. Treat it as a manual release/readiness gate when the change could affect real Linear API behavior.
 
 ## Troubleshooting
 
@@ -652,7 +695,7 @@ This project is released under the MIT License. See [LICENSE](LICENSE).
 - Direct Linear API mode currently covers issue transitions, comments, read-back verification, and ledger reconciliation. Project/label/dependency creation remains handled by the Linear MCP tools and skill workflow.
 - Default dry-run mode still updates the ledger and prints the required Linear MCP actions instead of making API calls.
 - Workspace-specific Linear state names may vary. The skill assumes simple state names such as `To Do`, `In Progress`, `Done`, and `Canceled`.
-- The included install script targets Codex-style local skill paths.
+- The included install script targets Codex-style local skill paths; Claude use is currently manual and documented in `docs/claude-portability.md`.
 
 ## Quick Start Prompt
 

@@ -2,23 +2,25 @@
 name: linear-project-planner
 description: >
   Plan, create, restructure, or execute Linear projects for audits, remediation,
-  production hardening, and parallel agent work. Standardise Linear issues,
-  milestones, labels, dependencies, verification gates, companion ledgers, agent
-  execution hygiene, and completion comments for Codex or Claude agents working
-  across any codebase.
+  production hardening, and parallel agent work. Use when the user asks to
+  create a Linear project, run the Linear skill, execute a Linear plan, organize
+  multi-agent work, preserve a companion ledger, add milestones/dependencies,
+  or close work with verification gates for Codex or Claude agents.
 metadata:
   short-description: Create agent-ready Linear remediation projects
 ---
 
 # Linear Project Planner
 
-Use this skill when creating or restructuring a Linear project so future Codex/Claude sessions can execute consistently across any codebase.
-
-Also use it when executing a Linear project created for agents. The same structure that makes a backlog useful must be kept accurate while work happens.
+Use this skill when creating, restructuring, auditing, or executing a Linear
+project so future Codex/Claude sessions can work from the same execution system.
+Do not use it for a simple one-off Linear issue lookup unless the user also asks
+for planning, remediation, execution tracking, or project-level coordination.
 
 ## Core Rule
 
-Create an execution system, not a flat todo list. Every project should tell a future agent:
+Create an execution system, not a flat todo list. Every project should tell a
+future agent:
 
 - what order to work in
 - which tasks can run in parallel
@@ -30,178 +32,66 @@ Create an execution system, not a flat todo list. Every project should tell a fu
 
 ## Quick Path
 
-When speed matters, follow this shortest safe path:
-
-1. Read the local project rules and create or open the companion ledger.
-2. Create the Linear project with guide issues, parent workstreams, child issues, labels, dependencies, and sparse reference links.
-3. Claim one issue at a time with `linear-agent start`; dispatch parallel agents only for independent work with separate write scopes and worktrees.
-4. Use Context7 or official docs for framework, SDK, API, deployment, auth, database, or validation decisions.
-5. Verify every issue before `linear-agent complete`, then mirror the status and comment in Linear and read it back.
-6. Run standard final verification, reconcile Linear, and only then finalize with explicit evidence. Add the deeper auto-research loop only when it is explicitly requested, approved during planning, or clearly triggered by the user's wording.
+1. Read local project rules and create or open the companion ledger.
+2. Create or update the Linear project with guide issues, parent workstreams,
+   child issues, labels, milestones, dependencies, and sparse reference links.
+3. Put user-requested research, source review, audits, and exploratory discovery
+   inside the Linear plan when the user is asking for a Linear project. Minimal
+   repo inspection needed to shape the plan is allowed before issue creation;
+   substantive findings belong in tracked issues.
+4. Claim one issue at a time with `linear-agent start`; use separate branches
+   and worktrees for independent write-capable agents.
+5. Verify every issue before `linear-agent complete`, then mirror the Linear
+   status/comment and read it back.
+6. Run final verification, reconcile Linear, and finalize only with explicit
+   evidence.
 
 ## Reference Map
 
 Load deeper references only when the current task needs them:
 
+- `references/operator-cheatsheet.md`: one-page minimal safe path.
+- `references/project-structure.md`: milestones, labels, parent issues, child
+  issue template, sparse link graph, and research-as-planned-work template.
+- `references/execution-hygiene.md`: companion ledger, `linear-agent`,
+  issue-state hygiene, worktrees, completion comments, and finalization.
+- `references/validation-modes.md`: standard validation, optional deep
+  auto-research validation, production gates, and sink/output preservation.
+- `references/trigger-preservation.md`: trigger-safe front-door contract for
+  maintaining this skill.
+- `references/command-schemas.md`: structured `linear_project.*` command
+  contract for future MCP/function-tool layers.
+- `references/runtime-state.md`: model/runtime guidance, Responses API state
+  continuity, and compaction recovery.
+- `references/repository-hardening.md`: CI, release, CodeQL, branch/ruleset, and
+  solo-maintainer hardening policy.
 - `templates/EXECUTION.md`: companion ledger shape and checklist semantics.
-- `scripts/linear-agent`: local transition wrapper, direct Linear mode, reconciliation, and finalization guards.
-- `lib/linear_agent/ledger.py`: typed Markdown ledger parsing used by the shell wrapper and GraphQL reconciler.
-- `references/command-schemas.md`: structured `linear_project.*` command contract for future function/MCP tool layers.
-- `references/runtime-state.md`: model/runtime guidance, Responses API state continuity, and compaction recovery.
-- `references/operator-cheatsheet.md`: one-page minimal safe path and issue set templates.
-- `templates/production-gates.md`: stack-specific production and sink gate templates.
-- `tests/fixtures/linear_issue_templates.md`: expected issue and completion-comment output shape.
+- `templates/production-gates.md`: production and sink/output inventory gates.
+- `scripts/linear-agent`: local transition wrapper, direct Linear mode,
+  reconciliation, and finalization guards.
+- `tests/fixtures/linear_issue_templates.md`: expected issue and final comment
+  output shape.
 
 ## First Pass
 
 Before creating issues:
 
-1. Identify the repository, production context, and deployment surface.
-2. Read project instructions (`AGENTS.md`, `CLAUDE.md`, `.claude/rules/**`, architecture docs).
-3. Use Context7 for current docs when tasks touch frameworks, deployment, auth, ORM, validation, or SDKs.
-4. If this is a live production app, add production-readiness and output-preservation gates before fix tickets.
-5. Prefer milestones and parent issues over one giant issue list.
-6. For agent-heavy projects, create a companion execution ledger before or alongside Linear issue creation.
-7. Build a sparse link graph across tasks, docs, source artifacts, and verification evidence.
-8. Classify validation depth before creating final validation tasks: use standard validation by default, and gate deep auto-research behind explicit user opt-in or clear trigger wording.
-
-## Standard Milestones
-
-Use these milestone names unless the project calls for a domain-specific variant:
-
-- Agent Bootstrap & Triage
-- Security, Auth & Permission Guardrails
-- Data Integrity & Business Logic
-- Sync, Cron & Integration Reliability
-- Database, Performance & Query Safety
-- Frontend, UX & Accessibility
-- Final Verification, Release & Monitoring
-
-For non-web codebases, adapt labels but keep the same intent.
-
-## Standard Labels
-
-Create or reuse labels:
-
-- `agent-ready`
-- `parallel-safe`
-- `serial-required`
-- `overlap-zone`
-- `needs-human-review`
-- `verification-missing`
-- `context-needed`
-- `production-risk`
-- `touches-auth`
-- `touches-db`
-- `touches-money`
-- `touches-sync`
-- `touches-frontend`
-- `touches-security`
-
-Add domain labels as needed, but do not replace these execution labels.
-
-### Optional Agent Execution Labels
-
-If the Linear workspace benefits from queue filtering or crash recovery, create namespaced execution labels and keep exactly one current state label on each active issue:
-
-- `agent:queued`
-- `agent:planning`
-- `agent:executing`
-- `agent:verifying`
-- `agent:blocked`
-- `agent:pr-ready`
-- `agent:failed`
-
-These labels are not replacements for Linear issue status. Status stays simple (`Backlog`, `Todo`, `In Progress`, `Done`, `Canceled`); `agent:*` labels describe agent execution state.
-
-## Parent Issues
-
-Create parent issues as workstream envelopes. Each parent should explain:
-
-- ownership boundary
-- non-goals
-- sequencing rules
-- verification expectation
-- cross-issue risks
-
-Typical parents:
-
-- Guide: Agent Operating Guide
-- Guide: Verification Matrix
-- Workstream: Security/Auth
-- Workstream: Data/Business Logic
-- Workstream: Sync/Integrations
-- Workstream: Database/Performance
-- Workstream: Frontend/UX
-- Workstream: Final Release/Monitoring
-
-## Child Issue Template
-
-Each issue should include:
-
-```md
-## Problem
-What is wrong, risky, or missing.
-
-## Evidence
-- File paths, route names, logs, CLI findings, or audit references.
-
-## Acceptance Criteria
-- Concrete behavioral outcomes.
-- Tests or CLI checks required.
-- Production/readiness checks if applicable.
-
-## Verification
-- Exact commands or checks.
-- Before/after comparison when output matters.
-
-## Reference Links
-- Related Linear issues, blockers, docs, PRs, commits, source files, or ledger anchors.
-- Only include links that change implementation, sequencing, verification, or recovery.
-
-## Docs / Local Rules
-- Context7 library IDs and direct docs links.
-- Local AGENTS/CLAUDE/rule files.
-
-## Agent Notes
-- Parallel-safe or serial-required.
-- Known overlap files/modules.
-- Follow-up/backfill/migration notes.
-```
-
-## Sparse Link Graph
-
-Use links as context compression, not decoration. The project should become a small navigable web where future agents can recover the right context quickly without reading every issue.
-
-Always use formal Linear relationships for:
-
-- parent/child workstream structure
-- `blocks`
-- `blockedBy`
-- `relatedTo`
-- duplicates or follow-up issues when discovered
-
-Use Markdown URLs or Linear links inside descriptions/comments for:
-
-- Context7 or official docs that materially guide implementation
-- source files, routes, scripts, migrations, or config paths
-- GitHub PRs, commits, branches, and compare URLs
-- companion execution ledger paths
-- external design notes or runbooks
-- verification artifacts, dashboards, or logs
-
-Keep the graph sparse. Normal child issues should usually have 3-7 high-signal links at most. Guide issues, verification matrices, and release gates may carry more. Do not link every issue to every other issue; weak links increase reading cost and make the project slower.
-
-Use this rule: links should compress context, not clutter tasks. If a link does not affect implementation, sequencing, verification, or recovery, leave it out.
-
-If Linear issue creation, relationship creation, or project documents are blocked by workspace limits or tool availability, preserve the intended sparse graph in the companion ledger and, when possible, the Linear project description. Record:
-
-- the guide issues, parent workstreams, and child issues still to create
-- intended `blocks`, `blockedBy`, and `relatedTo` edges
-- docs, source, PR, commit, evaluator, and ledger URLs that future agents need
-- the exact blocker and the retry point
-
-Mark those graph actions as blocked or `[~]` not applicable with a reason. Do not mark them complete until Linear read-back proves they exist.
+1. Identify the repository, production context, deployment surface, and whether
+   business outputs or sync sinks are in scope.
+2. Read project instructions such as `AGENTS.md`, `CLAUDE.md`,
+   `.claude/rules/**`, architecture docs, and relevant local runbooks.
+3. Use Context7, official docs, or tracked research issues for current
+   framework, SDK, API, deployment, auth, database, or validation decisions.
+4. Add production-readiness and output-preservation gates before risky
+   implementation tickets when the work touches a live app or sink.
+5. Prefer milestones, guide issues, and parent workstreams over one giant issue
+   list.
+6. Create a companion execution ledger before or alongside Linear issue
+   creation.
+7. Build a sparse link graph across tasks, docs, source artifacts, and
+   verification evidence.
+8. Classify validation depth: standard by default; deep auto-research only when
+   explicitly requested, approved, or clearly triggered.
 
 ## Required Guide Issues
 
@@ -209,130 +99,40 @@ Always add these two guide issues:
 
 ### Guide: Agent Operating Guide
 
-Must include:
-
-- how to choose work
-- when to spawn parallel agents
-- branch/worktree expectations
-- dirty worktree warning
-- docs lookup expectations
-- how to update Linear while working
-- where the companion execution ledger lives and when to update it
-- how to hand off unfinished work
+Include how to choose work, dependency order, branch/worktree expectations,
+dirty worktree warnings, docs lookup expectations, Linear update rules, ledger
+path, handoff expectations, and the first safest issue.
 
 ### Guide: Verification Matrix
 
-Must include:
+Include baseline local checks, domain-specific checks, production/deployment
+checks when relevant, browser/UI checks when relevant, database migration checks
+when relevant, rollback/post-deploy observation requirements, binary/frozen
+evaluators, validation mode, and final read-back requirements.
 
-- baseline local checks
-- domain-specific checks
-- production/deployment checks
-- browser/UI checks if relevant
-- database migration checks
-- rollback and post-deploy observation requirements
-- binary/frozen evaluator checks for any measurable project outcome
-- validation mode (`standard` by default, or `deep-autoresearch` when explicitly requested/approved)
-- optional deep auto-research validation tasks and pass/fail thresholds when opted in
+## Sparse Link Graph
 
-## Optional Deep Auto-Research Validation
+Use links as context compression, not decoration. Always use formal Linear
+relationships for parent/child structure, blockers, related issues, and
+duplicates. Use Markdown links for docs, source files, PRs, commits, branches,
+ledger paths, verification artifacts, dashboards, and logs only when they affect
+implementation, sequencing, verification, or recovery.
+In short: links should compress context, not clutter tasks.
 
-Standard validation is mandatory for every project. That means clear acceptance criteria, issue-level verification before `Done`, Linear read-back, final reconciliation, and completion/finalization evidence.
+Normal child issues should usually carry 3-7 high-signal links. If Linear
+relationship creation is blocked, preserve the intended graph in the companion
+ledger and do not mark graph creation complete until Linear read-back proves it.
 
-Deep auto-research validation is optional. Do not add recursive auto-research tasks to ordinary projects by default. Add them only when one of these gates is satisfied:
+## Companion Ledger
 
-- the user explicitly asks for auto-research, dogfooding, recursive testing, repeated evaluator passes, long-horizon iteration, or failure-discovery loops
-- the user approves the deeper loop after the agent asks during planning
-- the project is a release/publish gate, production-risk remediation, high-uncertainty migration, or safety-critical change and the user has agreed to the extra validation depth
-
-Ask after initial project/risk classification and before creating final validation tasks. Keep the question short:
-
-```txt
-Do you want standard validation only, or the deeper auto-research loop with repeated evaluator passes and follow-up task creation?
-```
-
-If the user's original request already says things like `dogfood`, `recursive`, `auto-research`, `keep iterating`, `long horizon`, or `publish after stable`, treat that as opt-in and record it instead of asking again.
-
-Record the decision in the companion ledger:
-
-```md
-- Validation mode: standard
-- Deep auto-research loop: not requested
-```
-
-or:
-
-```md
-- Validation mode: deep-autoresearch
-- Deep auto-research loop: approved by user
-- Frozen evaluator: <command>
-- Stability threshold: <passes / score>
-```
-
-When opted in, add explicit validation tasks inspired by Andrej Karpathy's autoresearch loop. Before defining the loop, look up the current autoresearch source or explanation when internet access is available, then adapt the pattern to the project instead of copying ML-specific details.
-
-Use this pattern:
-
-1. Define a fixed evaluator for binary or numeric outcomes.
-2. Freeze the evaluator before the final loop begins.
-3. Make one focused change or hypothesis at a time.
-4. Run the benchmark/check.
-5. Keep the change only if correctness remains green and the score improves or stays valid.
-6. Revert or create a follow-up task when the experiment fails.
-7. Record learnings in the companion ledger.
-8. Repeat until the score is stable and no high-priority binary failures remain.
-
-Good evaluator candidates:
-
-- tests pass/fail
-- typecheck or lint error counts
-- build success
-- API contract checks
-- route/auth/RBAC matrices
-- database migration validation
-- output snapshot comparisons
-- accessibility/performance scores
-- repo readiness or release checklist scores
-- `linear-agent reconcile` output for Linear/ledger drift
-
-Create final issues such as:
-
-- `Workstream: Frozen Evaluator And Recursive Validation`
-- `Add binary validation harness`
-- `Run auto-research failure discovery loop`
-- `Create follow-up tasks for failed checks`
-- `Re-run final evaluator until stable`
-
-Make the final validation task shape concrete:
-
-- freeze the evaluator command and pass threshold before the loop
-- capture the baseline score/result in the ledger
-- run focused failure probes or experiments one at a time
-- keep only changes that preserve correctness and improve or maintain the score
-- create or link follow-up tasks for every failed, blocked, or inconclusive binary check
-- repeat until the evaluator is stable across repeated passes and no high-priority binary failures remain
-
-Do not let agents mutate the evaluator during the final validation loop unless the task is explicitly to fix an invalid evaluator. Changing the evaluator mid-loop invalidates prior results.
-
-## Companion Execution Ledger
-
-For agent-heavy Linear projects, create a durable Markdown ledger that survives context compaction and lets future sessions recover the original prompt, current work state, and todo progress without re-deriving the project.
-
-The ledger complements Linear; it does not replace Linear issues, comments, statuses, or dependencies.
-
-Default location:
-
-```txt
-.codex/linear-projects/<linear-project-slug>/EXECUTION.md
-```
-
-If multiple Git worktrees or parallel write agents will be used, prefer a coordinator-owned shared path outside individual worktrees so workers do not create divergent ledger copies:
+Every agent-heavy project needs a durable Markdown ledger. Prefer a coordinator
+owned path outside individual worktrees:
 
 ```txt
 ../.codex-linear-ledgers/<linear-project-slug>/EXECUTION.md
 ```
 
-Use `templates/EXECUTION.md` as the starting template when available.
-When the local wrapper is available, initialise it with the original prompt so future agents can recover why the project exists:
+Initialize with the original prompt when the wrapper is available:
 
 ```bash
 linear-agent init \
@@ -343,266 +143,86 @@ linear-agent init \
   --base-branch main
 ```
 
-The ledger must record:
-
-- original user prompt or project brief
-- Linear project URL or name
-- operating guide issue and verification matrix issue
-- repo path, base branch, active branches, and worktree paths
-- overall state, active issue, current agent state, last verified time, and next safest action
-- project creation checklist
-- issue progress table with Linear status, agent state, worktree, last update, and verification
-- decisions, blockers, risks, and handoff notes
-
-Checklist state must be honest: keep `[ ]` for pending work, use `[x]` only for completed work, and use `[~]` with a short reason for conditional items that do not apply. Do not leave a conditional production, dependency, or sink/output item unchecked at project completion if it was deliberately not needed.
-
-Update the ledger:
-
-- after creating or restructuring the Linear project
-- after creating guide issues, milestones, parents, children, labels, and dependencies
-- when claiming an issue or starting implementation/investigation
-- when a material discovery changes scope
-- when blocked, handing off, or assigning work to another agent
-- when verification passes or fails
-- before marking an issue `Done`
-- after the final Linear reconciliation, using a project-level finalize pass
-- before context handoff or session completion
-
-At the start of a resumed session, read the ledger, then reconcile it against Linear before choosing the next issue. If Linear and the ledger disagree, trust Linear for canonical issue status, trust comments for issue-level audit history, and update the ledger with the reconciliation result.
+The ledger complements Linear; it does not replace Linear issues, comments,
+statuses, or dependencies. Keep checklist state honest with `[ ]`, `[x]`, and
+`[~] not applicable:<reason>`.
 
 ## Linear Transition Wrapper
 
-For execution-state transitions, prefer the local `linear-agent` wrapper when available. By default, the wrapper updates the companion ledger first and prints the exact Linear MCP actions the agent must perform and read-back verify.
+Use `linear-agent` for execution-state transitions when available, then perform
+and read-back verify the printed Linear MCP actions.
 
-When Linear API credentials are available, use direct automation mode for lower-token, lower-drift execution:
+Common commands:
 
 ```bash
-LINEAR_API_KEY=... linear-agent start MAS-123 \
-  --ledger <path> \
-  --agent Codex \
-  --worktree <path> \
-  --apply-linear
+linear-agent start MAS-123 --ledger <path> --agent Codex --worktree <path>
+linear-agent block MAS-123 --ledger <path> --note "<blocker>"
+linear-agent verify MAS-123 --ledger <path> --verification "<check>: <result>"
+linear-agent complete MAS-123 --ledger <path> --verification "<check>: <result>"
+linear-agent handoff --ledger <path> --note "<handoff>"
+linear-agent reconcile --ledger <path>
+linear-agent finalize --ledger <path> --verification "<checks>" --evidence "<links>" --linear-reconciled --dependencies "satisfied" --production-gates "not-applicable:<reason>" --sink-gates "not-applicable:<reason>"
 ```
 
-Direct mode uses Linear GraphQL, updates the issue state, creates the progress comment, reads the issue back, and only then confirms the ledger row. It requires `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN`; `LINEAR_API_URL` may override the endpoint and defaults to `https://api.linear.app/graphql`. Endpoint overrides are validated to `https://api.linear.app` unless an intentional unsafe/testing override flag is set. If a workspace uses custom state names or duplicate state names, pin IDs with variables such as `LINEAR_STATE_IN_PROGRESS` and `LINEAR_STATE_DONE`; reconciliation treats matching override IDs as valid even when Linear's visible state name differs. If credentials are missing, stay in dry-run mode and perform the printed MCP actions. Fake Linear transport is test-only and requires `LINEAR_AGENT_TEST_MODE=1`; do not use fake transport variables in real project execution.
-
-Use `linear-agent reconcile --ledger <path>` at session start, after failures, and before finalization to compare ledger issue rows against Linear read-back. Reconciliation requires Linear credentials or a test fake transport. `linear-agent finalize` requires `--linear-reconciled`; only pass it after the final Linear/project read-back has succeeded.
-
-If direct mode reports a post-update confirmation failure, assume Linear may have changed while the ledger did not. Run `linear-agent reconcile --ledger <path>`, inspect the issue comments/state, and only then decide whether to retry, repair the ledger row, or record a blocker.
-
-Use it for:
-
-- claiming work: `linear-agent start MAS-123 --ledger <path> --agent Codex --worktree <path>`
-- recording blockers: `linear-agent block MAS-123 --ledger <path> --note "<blocker>"`
-- recording verification: `linear-agent verify MAS-123 --ledger <path> --verification "<check>: <result>"`
-- completing work: `linear-agent complete MAS-123 --ledger <path> --verification "<check>: <result>"`
-- handoff: `linear-agent handoff --ledger <path> --note "<handoff>"`
-- reconciliation: `linear-agent reconcile --ledger <path>`
-- final project reconciliation: `linear-agent finalize --ledger <path> --verification "<Linear read-back and final checks>" --evidence "<read-back summary, evidence file, CI link, or release link>" --linear-reconciled --dependencies "satisfied" --production-gates "satisfied" --sink-gates "not-applicable:<reason>"`
-
-`linear-agent init` refuses to overwrite an existing ledger unless `--force` is passed. Use `--force` only when replacing the prior ledger is intentional.
-
-`linear-agent finalize` requires explicit dependency, production, sink/output gate outcomes, and `--evidence`. Use `satisfied` when the gate was completed, or `not-applicable:<reason>` when the gate genuinely does not apply. Evidence should point to a Linear read-back summary, CI result, release link, evaluator output, or local artifact that proves finalization is grounded in something inspectable.
-
-`linear-agent finalize` must fail closed. It should only be used when the Issue Progress table contains real completed issue rows and every row is `Done` or `Completed`. Empty tables, `Todo`, `In Progress`, `Missing in Linear`, `Canceled`, blocked rows, or reconciliation drift mean the correct action is to record the blocker or follow-up, not finalize the project.
-
-After running the wrapper in default dry-run mode, perform the printed Linear MCP actions using structured Linear tools, then verify with a read-back call. In direct mode, verify the CLI output says the Linear transition was applied and read-back verified. If direct mode fails, record the mismatch and run `linear-agent reconcile` before choosing the next issue.
-
-If the wrapper is unavailable, manually follow the same sequence:
-
-1. Update the companion ledger.
-2. Update Linear issue status with a structured issue update.
-3. Add the progress, blocked, verification, completion, or handoff comment.
-4. Read the issue back and confirm the expected state.
-5. Record any mismatch in both Linear comments and the ledger.
-
-## Production App Gates
-
-For live production apps, add first-class issues for:
-
-- production env/deployment readiness
-- cron/job inventory if scheduled jobs exist
-- auth/RBAC route inventory if user data exists
-- data/business-output semantics if money, reporting, or compliance is involved
-- sink/output behavior-lock matrix if sync/import/export flows exist
-
-These are not optional. They prevent agents from fixing internals while breaking business outcomes.
-
-## Sink / Output Preservation
-
-For syncs, imports, ETL, webhooks, crons, reporting, AI pipelines, and other "sinks":
-
-- Document the destination tables, UI surfaces, reports, alerts, and downstream jobs.
-- Capture the current correct practical output before refactoring.
-- Require before/after comparison, not only unit tests.
-- Treat output changes as product changes requiring explicit approval.
-- Include backfill/migration notes if historical data changes.
-
-Use wording like:
-
-> Preserve existing practical output unless this issue explicitly changes it. Internals may be messy; business-facing populated data is the contract.
-
-## Sequencing Rules
-
-Use dependencies when:
-
-- one issue changes a shared predicate/helper used by another
-- one issue changes a shared state machine
-- one issue discovers scope for another
-- docs/inventory must precede implementation
-- production env must be verified before fail-closed behavior is enabled
-
-Use `parallel-safe` only when write scopes and behavior contracts do not overlap.
-
-## Mandatory Parallel Dispatch
-
-When there are 2+ independent, dependency-ready workstreams with disjoint write scopes, the coordinator must dispatch parallel sub-agents instead of serialising the work in one session.
-
-This is mandatory when all of these are true:
-
-- at least two child issues are unblocked and `agent-ready`
-- the issues do not depend on each other's implementation or discovery
-- the owned files, modules, data contracts, migrations, or docs are disjoint
-- verification for one issue does not require unmerged code from the other issue
-- each agent can work in its own branch/worktree or the work is read-only
-
-Do not dispatch parallel write-capable agents when ownership is unclear, when two issues may edit the same file/module, when one issue changes a shared helper/state machine used by another, or when a production/sink-output gate must be resolved first. Mark those issues `serial-required` or `overlap-zone` until the boundary is safe.
-
-Before dispatching, the coordinator must define:
-
-- the Linear issue each agent owns
-- the branch and worktree path for each write-capable agent
-- the exact owned write set: files, directories, modules, routes, scripts, migrations, or docs
-- explicit non-owned areas the agent must not edit
-- expected verification commands or checks
-- reconciliation order and merge/read-back expectations
-
-Parallel dispatch instructions must tell agents they are not alone in the codebase, must not revert other agents' changes, must stop and comment if ownership overlaps, and must leave completion comments with changed files, checks, residual risks, and follow-ups.
-
-## Context7 Expectations
-
-Use Context7 and direct docs links for:
-
-- Next.js / React / frontend framework behavior
-- Vercel / deployment / cron / serverless settings
-- Prisma / Drizzle / database migrations
-- Auth.js / NextAuth / auth libraries
-- Zod / validation
-- SDKs and provider APIs
-
-Each issue that depends on current docs should include Context7 library IDs plus direct docs URLs.
-
-## Status Update
-
-After project creation or restructuring, post a project status update or parent comment summarising:
-
-- new issue range
-- highest-priority gates
-- known serial dependencies
-- production risks
-- recommended first execution order
-- companion execution ledger path
-
-If status-update tooling is unavailable, add the summary as a comment on the operating guide issue.
-
-If Linear rejects optional project presentation fields such as `icon`, retry without them and record the workspace validation mismatch in the operating-guide issue or ledger. Do not block project creation on cosmetic metadata.
+Direct Linear mode requires `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` and
+`--apply-linear`. Endpoint overrides are validated to `https://api.linear.app`
+unless explicitly allowed for trusted testing. Fake transport is test-only and
+requires `LINEAR_AGENT_TEST_MODE=1`.
 
 ## Execution State Hygiene
 
-When working through an agent-ready Linear project:
-
-- Read the companion execution ledger, operating guide, and verification matrix before choosing work.
-- Choose work from issues that are `agent-ready`, not completed, not blocked, and highest priority within dependency order.
-- If Linear's agent/delegate model is available, set the executing agent as delegate while keeping the human owner/assignee responsible where appropriate.
-- Use `linear-agent` for execution-state transitions when available, then perform and verify the printed Linear MCP actions.
+- Read the ledger, operating guide, and verification matrix before choosing
+  work.
 - Move an issue to `In Progress` when implementation or investigation starts.
-- Add an acknowledgement comment before long-running work when the issue is claimed.
-- Add a progress comment when a material discovery changes scope, when blocked, or when handing work to another agent.
-- Keep issue relationships current: add blockers, related issues, duplicates, or follow-ups when discovered.
+- Add an acknowledgement comment before long-running work.
+- Add progress comments for material discoveries, blockers, or handoffs.
+- Keep blockers, related issues, duplicates, and follow-ups current.
 - Do not mark an issue `Done` until acceptance criteria and verification pass.
-- Completion comments must include:
-  - files/modules changed or inspected
-  - checks run and results
-  - production/log/browser/CLI verification if relevant
-  - residual risks
-  - follow-up issues created
-- If the work changes issue scope, update the issue description or add a clear comment before continuing.
-- If work reveals a sink/output behavior risk, stop and attach the risk to the issue before changing output behavior.
-- For parallel agents, each agent must own a disjoint write scope before write work starts. If scopes overlap, stop and reconcile ownership through the coordinator and issue comments before continuing.
-- Do not rely on parent auto-close for agent projects that need human review. Parents/workstreams should remain open until the final verification/release gate is complete.
-- Update the companion execution ledger at each state transition so context compaction does not erase the working todo state.
+- Completion comments must include changed/inspected files, checks run, result,
+  residual risks, and follow-ups.
+- Parent workstreams should remain open until their child issues and final gate
+  are complete.
+- Update the companion ledger at each transition so compaction does not erase
+  execution state.
 
-## Parallel Code Execution With Worktrees
+## Parallel Work
 
-When executing code changes with multiple agents in the same repository, isolate write scopes with Git worktrees unless the work is read-only or the agent runtime already provides separate forked workspaces. Parallel write-capable agents must not share one working tree.
+Use `parallel-safe` only when write scopes and behavior contracts do not overlap.
+For write-capable parallel agents, assign one Linear issue, one branch, one
+worktree, one explicit write set, and non-owned areas the agent must not edit.
+If write scopes overlap, mark issues `serial-required` or `overlap-zone` until
+the coordinator reconciles ownership.
 
-Use this pattern:
+## Optional Deep Auto-Research Validation
 
-1. Start from the intended base branch and inspect dirty state.
-2. Create one worktree per issue or tightly-coupled issue group.
-3. Use a branch name tied to the issue, e.g. `codex/mas-50-ticket-escalation-cron`.
-4. Assign each agent a clear worktree path and owned file/module scope.
-5. Tell agents they are not alone in the codebase and must not revert unrelated changes.
-6. Record the worktree path and owned write set in Linear and the companion ledger.
-7. Merge/integrate branches deliberately after review, verification, and coordinator reconciliation.
+Standard validation is mandatory for every project. That means concrete
+acceptance criteria, issue-level verification before `Done`, Linear read-back,
+final reconciliation, and evidence in completion/finalization comments.
 
-Example:
+Only add the deeper auto-research loop when the user explicitly asks, approves
+it during planning, or uses clear trigger language such as `dogfood`,
+`recursive`, `auto-research`, `keep iterating`, `long horizon`, or `publish
+after stable`. If unclear, ask:
 
-```bash
-git worktree add ../smd-mas-50 -b codex/mas-50-ticket-escalation-cron codex/full-codebase-audit
-git worktree add ../smd-mas-59 -b codex/mas-59-sync-timeouts codex/full-codebase-audit
+```txt
+Do you want standard validation only, or the deeper auto-research loop with repeated evaluator passes and follow-up task creation?
 ```
 
-Avoid running two implementation agents in the same working tree when both can edit files. Use one shared worktree only for read-only audit agents or when a single coordinator is applying all patches.
+When enabled, freeze a binary or numeric evaluator before the final loop, make
+one focused change at a time, keep only changes that preserve correctness, and
+create follow-up tasks for failed or inconclusive checks. Do not mutate the
+evaluator mid-loop unless the issue is explicitly to fix an invalid evaluator.
 
-The coordinator owns worktree safety:
+## Production And Sink Gates
 
-- no overlapping write sets
-- no agent reverts or rewrites another agent's changes
-- no broad cleanup outside the owned issue scope
-- no merge until each branch has passed its issue verification
-- reconcile conflicts, shared contracts, and final integration deliberately before merge
+For live production apps, add first-class issues for deployment readiness, cron
+or job inventory, auth/RBAC inventory, data/business-output semantics, and sink
+or output behavior locks. Preserve existing practical output unless an issue
+explicitly changes it.
 
-Do not delete worktrees until their branches are merged, abandoned intentionally, or handed off with clear notes. Record worktree paths in Linear progress comments when parallel execution starts and in completion comments when work finishes.
+## Status Update
 
-### Completion Comment Template
-
-```md
-Completed.
-
-Changed/inspected:
-- ...
-
-Verification:
-- ...
-
-Result:
-- ...
-
-Residual risks:
-- ...
-
-Follow-ups:
-- ...
-```
-
-### Blocked Comment Template
-
-```md
-Blocked.
-
-Blocker:
-- ...
-
-What I learned:
-- ...
-
-Safest next parallel issue:
-- ...
-```
-
-Use this wording in guide issues:
-
-```md
-As you work through this Linear project, keep issue state accurate. Move an issue to In Progress when you start it, add progress comments when blocked or materially updated, move it to Done only after verification passes, and leave a completion comment with changed files, checks run, residual risks, and follow-up issues created.
-```
+After project creation or restructuring, post a project status update or
+operating-guide comment summarizing the issue range, highest-priority gates,
+serial dependencies, production risks, first execution order, and companion
+ledger path.

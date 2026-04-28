@@ -29,6 +29,7 @@ jobs:
           git rev-parse "v$version"
           bash tests/test-linear-agent.sh
           python3 -m unittest tests/test_linear_agent_graphql.py tests/test_linear_agent_graph_features.py
+          python3 tools/linear-front-door-evaluator.py
           python3 tools/linear-agent-evaluator.py
           python3 tools/linear-skill-audit-evaluator.py
           tmp_home="$(mktemp -d)"

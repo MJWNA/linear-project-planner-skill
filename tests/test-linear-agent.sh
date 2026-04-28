@@ -33,9 +33,11 @@ assert_not_contains() {
 
 LEDGER="$TMP_DIR/EXECUTION.md"
 
-assert_contains "$SKILL_DIR/SKILL.md" "## Mandatory Parallel Dispatch"
-assert_contains "$SKILL_DIR/SKILL.md" "When there are 2+ independent, dependency-ready workstreams with disjoint write scopes"
-assert_contains "$SKILL_DIR/SKILL.md" "Parallel write-capable agents must not share one working tree"
+assert_contains "$SKILL_DIR/SKILL.md" "## Parallel Work"
+assert_contains "$SKILL_DIR/SKILL.md" "Use \`parallel-safe\` only when write scopes and behavior contracts do not overlap"
+assert_contains "$SKILL_DIR/SKILL.md" "For write-capable parallel agents, assign one Linear issue, one branch, one"
+assert_contains "$SKILL_DIR/SKILL.md" "references/trigger-preservation.md"
+assert_contains "$SKILL_DIR/SKILL.md" "research, source review, audits, and exploratory discovery"
 assert_contains "$SKILL_DIR/SKILL.md" "## Sparse Link Graph"
 assert_contains "$SKILL_DIR/SKILL.md" "links should compress context, not clutter tasks"
 assert_contains "$SKILL_DIR/SKILL.md" "## Optional Deep Auto-Research Validation"
@@ -47,6 +49,8 @@ assert_contains "$SKILL_DIR/README.md" "### Sparse Link Graph"
 assert_contains "$SKILL_DIR/README.md" "### 5. Optional Deep Auto-Research Validation"
 assert_contains "$SKILL_DIR/README.md" "Standard validation is always required"
 assert_contains "$SKILL_DIR/README.md" "Links should compress context, not clutter tasks"
+assert_contains "$SKILL_DIR/README.md" "### Trigger-Safe Progressive Disclosure"
+assert_contains "$SKILL_DIR/README.md" "### Manual Linear Smoke Tests"
 
 "$BIN" init \
   --ledger "$LEDGER" \

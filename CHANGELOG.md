@@ -6,6 +6,12 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
+- Slimmed `SKILL.md` into a trigger-safe front door backed by focused references for project structure, execution hygiene, validation modes, and trigger preservation.
+- Added source-backed research on progressive disclosure, metadata-driven discovery, and tool routing for skill activation reliability.
+- Added a front-door evaluator and wired it into CI/release verification.
+- Clarified Codex-first and Claude-compatible portability, including current manual Claude install caveats.
+- Documented the manual, secret-gated live Linear smoke-test pattern separately from hermetic fake-transport CI.
+
 ## 3.0.0 - 2026-04-28
 
 - Dogfooded the Linear project planner skill against itself through a new v3.0 Linear self-test project and companion ledger.

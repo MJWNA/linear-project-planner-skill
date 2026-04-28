@@ -37,6 +37,15 @@ def main() -> int:
         "purpose_fit": contains("SKILL.md", "Create an execution system, not a flat todo list"),
         "contract_clarity": exists("references/operator-cheatsheet.md")
         and contains("references/operator-cheatsheet.md", "Minimal Safe Path"),
+        "trigger_safe_front_door": exists("references/trigger-preservation.md")
+        and contains("SKILL.md", "create a Linear project")
+        and contains("SKILL.md", "run the Linear skill")
+        and contains("SKILL.md", "Do not use it for a simple one-off Linear issue lookup"),
+        "progressive_disclosure_research": exists("docs/research/skill-front-door-context-loading.md")
+        and contains("docs/research/skill-front-door-context-loading.md", "trigger-safe progressive disclosure")
+        and contains("SKILL.md", "references/project-structure.md")
+        and contains("SKILL.md", "references/execution-hygiene.md")
+        and contains("SKILL.md", "references/validation-modes.md"),
         "linear_project_structure": contains("references/command-schemas.md", "linear_project.graph_apply")
         and exists("tests/fixtures/linear_graph_plan.json"),
         "ledger_design": contains("lib/linear_agent/ledger.py", "write_state_sidecar")
@@ -64,7 +73,11 @@ def main() -> int:
         "maintainability": exists("lib/linear_agent/cli.py")
         and exists("lib/linear_agent/graph.py"),
         "portability": contains("lib/linear_agent/ledger.py", "LINEAR_AGENT_TIMEZONE")
-        and (contains("README.md", "Windows") or contains("README.md", "WSL")),
+        and exists("docs/claude-portability.md")
+        and (contains("README.md", "Windows") or contains("README.md", "WSL"))
+        and contains("README.md", "Codex-first and Claude-compatible"),
+        "manual_linear_smoke_docs": exists("docs/manual-linear-smoke.md")
+        and contains("README.md", "Manual Linear Smoke Tests"),
     }
     payload = {
         "score": sum(1 for ok in checks.values() if ok),
