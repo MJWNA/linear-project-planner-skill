@@ -34,7 +34,7 @@ assert_not_contains() {
 LEDGER="$TMP_DIR/EXECUTION.md"
 
 assert_contains "$SKILL_DIR/SKILL.md" "## Parallel Work"
-assert_contains "$SKILL_DIR/SKILL.md" 'Use `parallel-safe` only when write scopes and behavior contracts do not overlap'
+assert_contains "$SKILL_DIR/SKILL.md" "Use \`parallel-safe\` only when write scopes and behavior contracts do not overlap"
 assert_contains "$SKILL_DIR/SKILL.md" "For write-capable parallel agents, assign one Linear issue, one branch, one"
 assert_contains "$SKILL_DIR/SKILL.md" "references/trigger-preservation.md"
 assert_contains "$SKILL_DIR/SKILL.md" "research, source review, audits, and exploratory discovery"
