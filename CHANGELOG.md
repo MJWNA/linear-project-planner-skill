@@ -6,6 +6,10 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
+- Nothing yet.
+
+## 3.1.0 - 2026-04-28
+
 - Slimmed `SKILL.md` into a trigger-safe front door backed by focused references for project structure, execution hygiene, validation modes, and trigger preservation.
 - Added source-backed research on progressive disclosure, metadata-driven discovery, and tool routing for skill activation reliability.
 - Added a front-door evaluator and wired it into CI/release verification.
