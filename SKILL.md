@@ -48,6 +48,8 @@ Load deeper references only when the current task needs them:
 - `lib/linear_agent/ledger.py`: typed Markdown ledger parsing used by the shell wrapper and GraphQL reconciler.
 - `references/command-schemas.md`: structured `linear_project.*` command contract for future function/MCP tool layers.
 - `references/runtime-state.md`: model/runtime guidance, Responses API state continuity, and compaction recovery.
+- `references/operator-cheatsheet.md`: one-page minimal safe path and issue set templates.
+- `templates/production-gates.md`: stack-specific production and sink gate templates.
 - `tests/fixtures/linear_issue_templates.md`: expected issue and completion-comment output shape.
 
 ## First Pass
@@ -330,6 +332,16 @@ If multiple Git worktrees or parallel write agents will be used, prefer a coordi
 ```
 
 Use `templates/EXECUTION.md` as the starting template when available.
+When the local wrapper is available, initialise it with the original prompt so future agents can recover why the project exists:
+
+```bash
+linear-agent init \
+  --ledger <path> \
+  --project "<project name>" \
+  --prompt "<original user prompt or project brief>" \
+  --repo <repo-path> \
+  --base-branch main
+```
 
 The ledger must record:
 
@@ -492,6 +504,8 @@ After project creation or restructuring, post a project status update or parent 
 - companion execution ledger path
 
 If status-update tooling is unavailable, add the summary as a comment on the operating guide issue.
+
+If Linear rejects optional project presentation fields such as `icon`, retry without them and record the workspace validation mismatch in the operating-guide issue or ledger. Do not block project creation on cosmetic metadata.
 
 ## Execution State Hygiene
 

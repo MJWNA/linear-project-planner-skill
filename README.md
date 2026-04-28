@@ -90,6 +90,10 @@ The skill keeps the front-door instructions compact and moves deeper contracts i
 - `scripts/linear-agent`: shell CLI for ledger transitions, direct Linear mode, reconciliation, and finalization.
 - `references/command-schemas.md`: proposed `linear_project.*` structured tool contract.
 - `references/runtime-state.md`: model/runtime and Responses API state guidance.
+- `references/operator-cheatsheet.md`: one-page operator path and minimal safe issue set.
+- `references/repository-hardening.md`: CI, release, CodeQL, branch/ruleset, and solo-maintainer hardening policy.
+- `templates/production-gates.md`: reusable production and sink inventory gates for common project types.
+- `docs/examples/`: worked examples for local audits, production hardening, and parallel remediation.
 - `tests/fixtures/linear_issue_templates.md`: expected issue and final comment shapes for agent-output evaluation.
 
 ### 1. Plan The Project
@@ -213,6 +217,20 @@ The command updates the ledger, then prints the required Linear actions:
 - Read the issue back and confirm the state.
 - Record any mismatch instead of pretending the transition succeeded.
 
+The CLI also exposes the 10/10 project automation surface:
+
+```bash
+linear-agent graph-plan --from tests/fixtures/linear_graph_plan.json
+linear-agent graph-apply --from tests/fixtures/linear_graph_plan.json
+linear-agent graph-readback --from tests/fixtures/linear_graph_plan.json
+linear-agent allocate --from tests/fixtures/linear_graph_plan.json --ledger EXECUTION.md
+linear-agent inventory --repo /path/to/repo
+linear-agent smoke --project disposable-linear-project
+linear-agent validate-ledger --ledger EXECUTION.md
+```
+
+Every command supports `--json` where structured output is useful. Exit code `0` means success, `1` means recoverable drift or failed validation, and `2` means usage/input error.
+
 ### 4. Verify Before Done
 
 Completion requires a verification string:
@@ -334,6 +352,8 @@ linear-agent init \
   --prompt "Original user prompt" \
   --force
 ```
+
+The `--prompt` value is required. Use the user's original request or the shortest faithful project brief so resumed agents can recover the intent after context compaction.
 
 ### Start Work
 
@@ -460,18 +480,28 @@ It is especially useful for:
 ├── install.sh
 ├── lib/
 │   └── linear_agent/
+│       ├── cli.py
+│       ├── graph.py
 │       ├── graphql.py
 │       └── ledger.py
+├── docs/
+│   ├── examples/
+│   ├── linear-token-scope.md
+│   └── migration-guide.md
 ├── references/
 │   ├── command-schemas.md
+│   ├── operator-cheatsheet.md
+│   ├── repository-hardening.md
 │   └── runtime-state.md
 ├── scripts/
 │   └── linear-agent
 ├── templates/
-│   └── EXECUTION.md
+│   ├── EXECUTION.md
+│   └── production-gates.md
 ├── tests/
 │   ├── fixtures/
 │   ├── test-linear-agent.sh
+│   ├── test_linear_agent_graph_features.py
 │   └── test_linear_agent_graphql.py
 └── tools/
     └── linear-agent-evaluator.py
@@ -483,6 +513,19 @@ Install from this repository root:
 
 ```bash
 ./install.sh
+```
+
+Install with local docs and license visibility:
+
+```bash
+./install.sh --with-docs
+```
+
+Validate or remove an install:
+
+```bash
+./install.sh --check
+./install.sh --uninstall
 ```
 
 That copies the skill into:
@@ -523,6 +566,11 @@ Direct Linear automation is configured with environment variables:
 - `LINEAR_AGENT_TEST_MODE=1`: required before fake transport variables are honored
 - `LINEAR_AGENT_FAKE_STATE`: test-only fake Linear state file
 - `LINEAR_AGENT_FAKE_REQUESTS`: test-only JSONL request log path
+- `LINEAR_AGENT_TIMEZONE`: timestamp timezone, defaulting to `Australia/Brisbane`
+
+### Portability
+
+The skill is tested on macOS/Linux style shells. On Windows, use WSL with Bash and Python 3, then run the repo checkout directly or install into the WSL home directory. For no-install mode, run `scripts/linear-agent` from the repo checkout.
 
 ## Testing
 
@@ -531,7 +579,9 @@ Run the regression suite:
 ```bash
 bash tests/test-linear-agent.sh
 python3 -m unittest tests/test_linear_agent_graphql.py
+python3 -m unittest tests/test_linear_agent_graph_features.py
 python3 tools/linear-agent-evaluator.py
+python3 tools/linear-skill-audit-evaluator.py
 ```
 
 The evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 130/130`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
@@ -542,22 +592,22 @@ Run syntax checks:
 bash -n install.sh
 bash -n scripts/linear-agent
 bash -n tests/test-linear-agent.sh
-python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/ledger.py lib/linear_agent/graphql.py tools/linear-agent-evaluator.py
+python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/ledger.py lib/linear_agent/graphql.py lib/linear_agent/graph.py lib/linear_agent/cli.py tools/linear-agent-evaluator.py tools/linear-skill-audit-evaluator.py
 ```
 
 Optional, if installed locally:
 
 ```bash
-shellcheck scripts/linear-agent tests/test-linear-agent.sh
+shellcheck install.sh scripts/linear-agent tests/test-linear-agent.sh
 ```
 
 ## Deployment / Release
 
-Current production release: `v2.1.2`.
+Current production release: `v3.0.0`.
 
-The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases are manual: tag a known-good commit after CI passes, update [CHANGELOG.md](CHANGELOG.md), and use generated GitHub release notes when a versioned release is useful.
+The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases use the manual release workflow after a known-good commit is tagged, [CHANGELOG.md](CHANGELOG.md) is updated, and CI passes.
 
-The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It runs shell syntax checks, Python syntax checks, YAML parsing, the shell regression test suite, fake Linear GraphQL tests, and a trailing-whitespace scan on every push and pull request.
+The repository includes GitHub Actions workflows for CI, CodeQL, a manual release gate, and a manual live Linear smoke check. CI runs shell syntax, shellcheck, Python syntax, YAML parsing, secret scanning, regression tests, fake Linear GraphQL tests, graph feature tests, evaluators, and trailing-whitespace checks on every push and pull request.
 
 ## Troubleshooting
 
@@ -569,6 +619,7 @@ The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`.
 - If `--apply-linear` reports a post-update confirmation failure, run `linear-agent reconcile --ledger <path>` before manually confirming the ledger.
 - If direct mode reports a read-back mismatch, run `linear-agent reconcile --ledger /path/to/EXECUTION.md` before continuing.
 - If Linear state names differ in your workspace, follow the printed MCP actions and record any mismatch in the ledger.
+- If Linear rejects optional project metadata such as `icon`, retry without that cosmetic field and record the workspace validation note in the operating guide or ledger.
 
 ## Support
 

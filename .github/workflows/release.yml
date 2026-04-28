@@ -1,0 +1,45 @@
+name: Release
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to verify, without leading v
+        required: true
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify version, changelog, tag, tests, and artifact
+        run: |
+          set -euo pipefail
+          version="${{ inputs.version }}"
+          test "$(cat VERSION)" = "$version"
+          grep -Fq "## [$version]" CHANGELOG.md
+          git rev-parse "v$version"
+          bash tests/test-linear-agent.sh
+          python3 -m unittest tests/test_linear_agent_graphql.py tests/test_linear_agent_graph_features.py
+          python3 tools/linear-agent-evaluator.py
+          python3 tools/linear-skill-audit-evaluator.py
+          tmp_home="$(mktemp -d)"
+          CODEX_HOME="$tmp_home/.codex" HOME="$tmp_home" ./install.sh --with-docs
+          CODEX_HOME="$tmp_home/.codex" HOME="$tmp_home" PATH="$tmp_home/.local/bin:$PATH" ./install.sh --check
+          mkdir -p dist
+          git archive --format=tar.gz --prefix="linear-project-planner-skill-$version/" -o "dist/linear-project-planner-skill-$version.tar.gz" "v$version"
+          shasum -a 256 "dist/linear-project-planner-skill-$version.tar.gz" > "dist/linear-project-planner-skill-$version.sha256"
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linear-project-planner-skill-${{ inputs.version }}
+          path: dist/

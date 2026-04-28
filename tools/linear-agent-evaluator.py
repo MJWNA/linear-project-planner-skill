@@ -64,8 +64,8 @@ def main() -> int:
         (
             "direct apply command surface",
             10,
-            contains("scripts/linear-agent", "--apply-linear")
-            and contains("scripts/linear-agent", "LINEAR_AGENT_APPLY"),
+            contains("lib/linear_agent/cli.py", "--apply-linear")
+            and contains("lib/linear_agent/cli.py", "LINEAR_AGENT_APPLY"),
             "missing --apply-linear or LINEAR_AGENT_APPLY",
         )
     )
@@ -73,7 +73,7 @@ def main() -> int:
         (
             "reconcile command surface",
             10,
-            contains("scripts/linear-agent", "reconcile")
+            contains("lib/linear_agent/cli.py", "reconcile")
             and contains("lib/linear_agent/graphql.py", "def reconcile("),
             "missing reconcile command",
         )
@@ -105,7 +105,7 @@ def main() -> int:
             and contains("README.md", "SCORE 130/130")
             and contains("SKILL.md", "LINEAR_API_KEY")
             and contains("README.md", "linear-agent reconcile")
-            and contains("scripts/linear-agent", "finalize refuses unfinished issue rows")
+            and contains("lib/linear_agent/cli.py", "finalize refuses unfinished issue rows")
             and contains("tests/test-linear-agent.sh", "Expected reconcile against an empty Issue Progress table to fail")
             and contains("tests/test_linear_agent_graphql.py", "test_reconcile_empty_ledger_fails_closed")
             and contains("SKILL.md", "## Sparse Link Graph")
@@ -116,7 +116,7 @@ def main() -> int:
             and contains("README.md", "### 5. Optional Deep Auto-Research Validation")
             and contains("README.md", "Standard validation is always required")
             and contains("templates/EXECUTION.md", "Validation mode")
-            and contains("scripts/linear-agent", "Validation mode: standard"),
+            and contains("lib/linear_agent/cli.py", "Validation mode: standard"),
             "missing direct mode docs",
         )
     )

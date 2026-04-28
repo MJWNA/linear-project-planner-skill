@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Shell syntax
         run: |
@@ -21,18 +23,31 @@ jobs:
           bash -n scripts/linear-agent
           bash -n tests/test-linear-agent.sh
 
+      - name: Shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck install.sh scripts/linear-agent tests/test-linear-agent.sh
+
       - name: Python syntax
-        run: python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/ledger.py lib/linear_agent/graphql.py tools/linear-agent-evaluator.py
+        run: python3 -m py_compile lib/linear_agent/__init__.py lib/linear_agent/ledger.py lib/linear_agent/graphql.py lib/linear_agent/graph.py lib/linear_agent/cli.py tools/linear-agent-evaluator.py tools/linear-skill-audit-evaluator.py
 
       - name: YAML syntax
         run: |
           ruby -e 'require "yaml"; skill = File.read("SKILL.md"); frontmatter = skill.match(/\A---\n(.*?)\n---/m)[1]; YAML.safe_load(frontmatter); YAML.load_file("agents/openai.yaml"); puts "yaml ok"'
 
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Regression tests
         run: |
           bash tests/test-linear-agent.sh
           python3 -m unittest tests/test_linear_agent_graphql.py
+          python3 -m unittest tests/test_linear_agent_graph_features.py
           python3 tools/linear-agent-evaluator.py
+          python3 tools/linear-skill-audit-evaluator.py
 
       - name: Trailing whitespace
         run: |
@@ -46,9 +61,25 @@ jobs:
             templates/EXECUTION.md \
             tests/test-linear-agent.sh \
             tests/test_linear_agent_graphql.py \
+            tests/test_linear_agent_graph_features.py \
             lib/linear_agent/__init__.py \
             lib/linear_agent/ledger.py \
+            lib/linear_agent/graph.py \
+            lib/linear_agent/cli.py \
             lib/linear_agent/graphql.py \
             tools/linear-agent-evaluator.py \
+            tools/linear-skill-audit-evaluator.py \
             agents/openai.yaml \
-            .github/workflows/ci.yml
+            .github/workflows/ci.yml \
+            .github/workflows/codeql.yml \
+            .github/workflows/live-linear-smoke.yml \
+            .github/workflows/release.yml \
+            references/command-schemas.md \
+            references/operator-cheatsheet.md \
+            references/repository-hardening.md \
+            docs/linear-token-scope.md \
+            docs/migration-guide.md \
+            docs/examples/local-skill-audit.md \
+            docs/examples/production-hardening-project.md \
+            docs/examples/parallel-remediation-project.md \
+            templates/production-gates.md
