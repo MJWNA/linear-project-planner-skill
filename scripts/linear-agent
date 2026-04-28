@@ -442,6 +442,8 @@ init_ledger() {
   replace_line "$ledger" "- Overall status:" "- Overall status: initialized"
   replace_line "$ledger" "- Last verified:" "- Last verified: $(timestamp)"
   replace_line "$ledger" "- Next safest action:" "- Next safest action: create or reconcile Linear issues, then claim the first dependency-ready issue"
+  replace_line "$ledger" "- Validation mode:" "- Validation mode: standard"
+  replace_line "$ledger" "- Deep auto-research loop:" "- Deep auto-research loop: not requested"
   append_activity "$ledger" "Ledger initialized for $project."
 
   echo "Ledger initialized: $ledger"

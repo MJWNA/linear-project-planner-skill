@@ -22,6 +22,8 @@
 - Active worktree:
 - Last verified:
 - Next safest action:
+- Validation mode:
+- Deep auto-research loop:
 
 Checklist marker legend: `[ ]` pending, `[x]` complete, `[~]` not applicable with a reason. During final reconciliation, do not leave conditional items unchecked if they were intentionally not needed.
 

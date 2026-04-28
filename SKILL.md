@@ -37,7 +37,7 @@ When speed matters, follow this shortest safe path:
 3. Claim one issue at a time with `linear-agent start`; dispatch parallel agents only for independent work with separate write scopes and worktrees.
 4. Use Context7 or official docs for framework, SDK, API, deployment, auth, database, or validation decisions.
 5. Verify every issue before `linear-agent complete`, then mirror the status and comment in Linear and read it back.
-6. Run the frozen evaluator or binary verification loop at the end, record the score, reconcile Linear, and only then finalize with explicit evidence.
+6. Run standard final verification, reconcile Linear, and only then finalize with explicit evidence. Add the deeper auto-research loop only when it is explicitly requested, approved during planning, or clearly triggered by the user's wording.
 
 ## Reference Map
 
@@ -61,7 +61,7 @@ Before creating issues:
 5. Prefer milestones and parent issues over one giant issue list.
 6. For agent-heavy projects, create a companion execution ledger before or alongside Linear issue creation.
 7. Build a sparse link graph across tasks, docs, source artifacts, and verification evidence.
-8. Add final auto-research validation tasks for binary checks and fixed evaluators before release/completion.
+8. Classify validation depth before creating final validation tasks: use standard validation by default, and gate deep auto-research behind explicit user opt-in or clear trigger wording.
 
 ## Standard Milestones
 
@@ -229,11 +229,44 @@ Must include:
 - database migration checks
 - rollback and post-deploy observation requirements
 - binary/frozen evaluator checks for any measurable project outcome
-- final auto-research validation tasks and pass/fail thresholds
+- validation mode (`standard` by default, or `deep-autoresearch` when explicitly requested/approved)
+- optional deep auto-research validation tasks and pass/fail thresholds when opted in
 
-## Auto-Research Validation Tasks
+## Optional Deep Auto-Research Validation
 
-At the end of an execution plan, add explicit validation tasks inspired by Andrej Karpathy's autoresearch loop. Before defining the loop, look up the current autoresearch source or explanation when internet access is available, then adapt the pattern to the project instead of copying ML-specific details.
+Standard validation is mandatory for every project. That means clear acceptance criteria, issue-level verification before `Done`, Linear read-back, final reconciliation, and completion/finalization evidence.
+
+Deep auto-research validation is optional. Do not add recursive auto-research tasks to ordinary projects by default. Add them only when one of these gates is satisfied:
+
+- the user explicitly asks for auto-research, dogfooding, recursive testing, repeated evaluator passes, long-horizon iteration, or failure-discovery loops
+- the user approves the deeper loop after the agent asks during planning
+- the project is a release/publish gate, production-risk remediation, high-uncertainty migration, or safety-critical change and the user has agreed to the extra validation depth
+
+Ask after initial project/risk classification and before creating final validation tasks. Keep the question short:
+
+```txt
+Do you want standard validation only, or the deeper auto-research loop with repeated evaluator passes and follow-up task creation?
+```
+
+If the user's original request already says things like `dogfood`, `recursive`, `auto-research`, `keep iterating`, `long horizon`, or `publish after stable`, treat that as opt-in and record it instead of asking again.
+
+Record the decision in the companion ledger:
+
+```md
+- Validation mode: standard
+- Deep auto-research loop: not requested
+```
+
+or:
+
+```md
+- Validation mode: deep-autoresearch
+- Deep auto-research loop: approved by user
+- Frozen evaluator: <command>
+- Stability threshold: <passes / score>
+```
+
+When opted in, add explicit validation tasks inspired by Andrej Karpathy's autoresearch loop. Before defining the loop, look up the current autoresearch source or explanation when internet access is available, then adapt the pattern to the project instead of copying ML-specific details.
 
 Use this pattern:
 

@@ -6,6 +6,13 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
+## 2.1.1 - 2026-04-28
+
+- Changed deep auto-research validation from default behavior to an opt-in, trigger-based planning gate.
+- Kept standard validation mandatory for every project: issue verification, Linear read-back, final reconciliation, and completion evidence.
+- Added ledger fields and `linear-agent init` defaults for validation mode and deep auto-research loop state.
+- Updated README, regression tests, and evaluator checks for the new gated validation contract.
+
 ## 2.1.0 - 2026-04-28
 
 - Added compact Quick Path and Reference Map sections to reduce active context while preserving safety rules.
