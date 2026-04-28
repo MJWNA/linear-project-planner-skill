@@ -39,7 +39,7 @@ Together they help an agent:
 - Add production-readiness and output-preservation gates when the work touches live systems.
 - Maintain a Markdown execution ledger with source-of-truth links, active state, issue progress, decisions, blockers, risks, and handoff notes.
 - Move issues through `In Progress` and `Done` only when the local ledger, Linear comment, and verification evidence agree.
-- Add final auto-research validation tasks for binary checks and fixed evaluators.
+- Require standard validation for every project, and add deeper auto-research validation only when it is explicitly requested, approved, or clearly triggered by the user's wording.
 - Produce readable handoffs for future agents.
 - Finalize the ledger at project completion so stale checkboxes do not mislead the next session.
 
@@ -55,6 +55,7 @@ It records:
 - The verification matrix issue.
 - Repository, branch, workspace, and worktree paths.
 - Current state, active issue, active agent, last verified time, and next safest action.
+- Validation mode, including whether the optional deep auto-research loop was requested or skipped.
 - Project creation checklist.
 - Execution checklist.
 - Per-issue progress table.
@@ -78,7 +79,7 @@ The shortest safe operating flow is:
 2. Create the Linear project with guide issues, parent workstreams, child issues, labels, dependencies, and sparse links.
 3. Claim one issue at a time with `linear-agent start`; use separate worktrees for independent write-capable agents.
 4. Verify each issue before `linear-agent complete`, then mirror the Linear status/comment and read it back.
-5. Run the frozen evaluator or binary validation loop, reconcile Linear, and finalize only with explicit evidence.
+5. Run standard final verification, reconcile Linear, and finalize only with explicit evidence. Use the deeper auto-research loop only when it was explicitly requested, approved during planning, or clearly triggered by the user's wording.
 
 ### Reference Map
 
@@ -224,9 +225,35 @@ linear-agent complete MAS-123 \
 
 If `--verification` is missing, the command fails. This is deliberate. It prevents agents from marking work complete without evidence.
 
-### 5. Auto-Research Validation Loop
+### 5. Optional Deep Auto-Research Validation
 
-Before a project is finalized, the skill adds end-of-plan validation tasks based on Andrej Karpathy's autoresearch pattern:
+Standard validation is always required. Every project still needs concrete acceptance criteria, issue-level verification before `Done`, Linear read-back, final reconciliation, and evidence in completion/finalization comments.
+
+The deeper Andrej Karpathy-style auto-research loop is optional. The skill should add it only when the user explicitly asks, agrees during planning, or has already used trigger language such as `dogfood`, `recursive`, `auto-research`, `keep iterating`, `long horizon`, or `publish after stable`.
+
+Ask after the agent understands the project type and risk, but before it creates final validation tasks:
+
+```txt
+Do you want standard validation only, or the deeper auto-research loop with repeated evaluator passes and follow-up task creation?
+```
+
+Record the decision in the ledger:
+
+```md
+- Validation mode: standard
+- Deep auto-research loop: not requested
+```
+
+or:
+
+```md
+- Validation mode: deep-autoresearch
+- Deep auto-research loop: approved by user
+- Frozen evaluator: <command>
+- Stability threshold: <passes / score>
+```
+
+When opted in, the deep loop uses this pattern:
 
 1. define a fixed evaluator
 2. freeze the evaluator
@@ -237,15 +264,15 @@ Before a project is finalized, the skill adds end-of-plan validation tasks based
 7. record learnings in the ledger
 8. repeat until the score is stable
 
-For this skill, the evaluator is:
+For this skill's own release work, the evaluator is:
 
 ```bash
 python3 tools/linear-agent-evaluator.py
 ```
 
-For other projects, the evaluator might be tests, lint/typecheck counts, build success, API contract checks, output snapshots, accessibility scores, repo readiness, or `linear-agent reconcile` drift results. The important part is that the evaluator is binary or numeric and does not move during the final loop.
+For other opted-in projects, the evaluator might be tests, lint/typecheck counts, build success, API contract checks, output snapshots, accessibility scores, repo readiness, or `linear-agent reconcile` drift results. The important part is that the evaluator is binary or numeric and does not move during the final loop.
 
-The final Linear tasks should be explicit enough that a future agent can execute them without inventing the loop:
+When deep auto-research is enabled, the final Linear tasks should be explicit enough that a future agent can execute them without inventing the loop:
 
 - `Freeze evaluator command and success threshold`
 - `Run baseline evaluator and record score`

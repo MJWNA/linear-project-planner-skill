@@ -109,9 +109,14 @@ def main() -> int:
             and contains("tests/test-linear-agent.sh", "Expected reconcile against an empty Issue Progress table to fail")
             and contains("tests/test_linear_agent_graphql.py", "test_reconcile_empty_ledger_fails_closed")
             and contains("SKILL.md", "## Sparse Link Graph")
-            and contains("SKILL.md", "## Auto-Research Validation Tasks")
+            and contains("SKILL.md", "## Optional Deep Auto-Research Validation")
+            and contains("SKILL.md", "Standard validation is mandatory for every project")
+            and contains("SKILL.md", "Do you want standard validation only")
             and contains("README.md", "### Sparse Link Graph")
-            and contains("README.md", "### 5. Auto-Research Validation Loop"),
+            and contains("README.md", "### 5. Optional Deep Auto-Research Validation")
+            and contains("README.md", "Standard validation is always required")
+            and contains("templates/EXECUTION.md", "Validation mode")
+            and contains("scripts/linear-agent", "Validation mode: standard"),
             "missing direct mode docs",
         )
     )
