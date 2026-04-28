@@ -15,6 +15,7 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 - Added fake smoke run recording for inspectable local smoke tests.
 - Fixed the all-verticals evaluator portability check so `WSL` alone cannot mask missing timezone/Windows evidence.
 - Documented the required `linear-agent init --prompt` flag and Linear icon metadata fallback discovered during self-dogfooding.
+- Fixed CI checkout depth so the gitleaks action can resolve release-range commits.
 
 ## 2.2.0 - 2026-04-28
 
