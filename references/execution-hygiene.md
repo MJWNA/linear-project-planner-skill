@@ -45,6 +45,26 @@ state and comment read-back.
   residual risks, and follow-ups.
 - Parent workstreams stay open until their child issues and final gate are done.
 
+## Safe Parallelism Checkpoints
+
+Run a lightweight parallelism checkpoint after project creation/read-back and
+after material completions, blockers, or scope changes.
+
+At each checkpoint:
+
+- identify independent, unblocked `agent-ready` issues
+- group candidates by dependency order, write scope, risk, and verification
+  overlap
+- split work into follow-up issues before dispatch if ownership is too broad
+- keep dependent, shared-scope, or unclear work serial until reconciled
+- record the decision in Linear comments and the ledger
+
+Bounded read-only agents may run in parallel for context isolation when
+research, audit, read-back, verification, large docs, logs, diffs, issue
+histories, or reference material would otherwise overload coordinator context.
+Give them a time or scope limit and do not allow write access unless promoted to
+a write-capable assignment.
+
 ## Parallel Code Execution With Worktrees
 
 Use separate Git worktrees for parallel write-capable agents unless the runtime
@@ -58,7 +78,9 @@ Coordinator responsibilities:
 - define non-owned areas
 - tell agents they are not alone in the codebase
 - prevent reverts or cleanups outside ownership
+- make coordinator-level decisions, integration calls, and dependency changes
 - merge only after issue verification and coordinator reconciliation
+- maintain Linear status, comments, ledger updates, and final verification
 
 Example:
 
@@ -67,7 +89,13 @@ git worktree add ../repo-mas-123 -b codex/mas-123-feature main
 git worktree add ../repo-mas-124 -b codex/mas-124-docs main
 ```
 
-If write scopes overlap, mark issues `serial-required` or `overlap-zone`.
+Each write-capable assignment must state the Linear issue, branch/worktree,
+owned write scope, non-owned areas, and verification command.
+
+Use serial execution when there is a dependency, a shared file/module, unclear
+ownership, a production or sink gate, verification coupling, or
+coordinator-level decision context. If work is almost parallel-safe but too
+large, create follow-up issues that split the scope before dispatch.
 
 ## Finalization
 
