@@ -6,6 +6,12 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
+## 2.1.2 - 2026-04-28
+
+- Marked the public repository metadata as the current production release line.
+- Added a root `VERSION` file so the installable skill snapshot has an explicit version marker outside Git tags.
+- Re-ran the publisher verification gate: shell regressions, fake Linear GraphQL tests, evaluator, README completeness, and secret preflight.
+
 ## 2.1.1 - 2026-04-28
 
 - Changed deep auto-research validation from default behavior to an opt-in, trigger-based planning gate.
