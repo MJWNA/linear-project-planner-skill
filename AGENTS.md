@@ -21,6 +21,46 @@ code or documentation.
 
 This boundary prevents context pollution while improving the skill itself.
 
+## Name And Location Map
+
+The same artifact has different names depending on where it is being used:
+
+| Surface | Name / Path | Purpose |
+|---|---|---|
+| Public GitHub repo | `MJWNA/linear-project-planner-skill` | Canonical source repo for publishing, PRs, tags, CI, and releases |
+| MTA/PT workspace checkout | `projects/linear-project-planner-skill` | Local development workspace under `/Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace` |
+| Codex installed skill | `~/.codex/skills/linear-project-planner` | Runtime copy loaded by Codex skill discovery |
+| Skill name | `linear-project-planner` | Name in `SKILL.md` frontmatter and user-facing invocation |
+| CLI launcher | `~/.local/bin/linear-agent` | Installed wrapper command for ledger and Linear transitions |
+
+Do not confuse the repo name (`linear-project-planner-skill`) with the installed
+skill name (`linear-project-planner`). The repo contains the skill source; the
+installed skill path is the runtime copy.
+
+## Parent Workspace / Submodule Behavior
+
+This checkout lives inside the MTA/PT workspace under `projects/`, alongside
+other standalone projects and submodules.
+
+Treat this folder as its own Git repository. Run git commands from this
+directory when changing the skill:
+
+```bash
+cd /Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill
+```
+
+When pushing public changes:
+
+1. Commit inside this repository.
+2. Push this repository to `MJWNA/linear-project-planner-skill`.
+3. Open and merge the PR against the public repo's `main`.
+4. Only update the parent MTA/PT workspace pointer or submodule metadata if the
+   user explicitly asks. The parent workspace is often dirty with unrelated
+   project state.
+
+Do not run broad parent-workspace cleanup, resets, or commits just because this
+repo changed.
+
 ## Development Workflow
 
 - Work from this repo checkout under the MTA/PT workspace when iterating on the
@@ -35,6 +75,30 @@ This boundary prevents context pollution while improving the skill itself.
   when the `SKILL.md` Reference Map points to it.
 - Do not commit local execution ledgers, private Linear exports, credentials,
   screenshots with private workspace data, or temporary smoke-test artifacts.
+
+## Updating The Local Installed Skill
+
+Whenever a change is intended to affect how Codex uses the skill, update the
+local installed skill copy from this repository after verification:
+
+```bash
+./install.sh --with-docs
+./install.sh --check
+```
+
+This keeps `~/.codex/skills/linear-project-planner` aligned with the public
+repo source. Do this after merging or pulling public repo changes, and after
+local changes that should be available to Codex immediately.
+
+If a change is only a repo-development note, CI setting, or contributor doc that
+does not affect runtime skill behavior, installing is optional. When unsure,
+install and check.
+
+Never manually edit files under `~/.codex/skills/linear-project-planner` to
+make durable changes. Edit this repo, run verification, then install from here.
+
+If Claude is also being used, follow `docs/claude-portability.md` for the manual
+Claude skill copy. The Codex installer does not yet update Claude's skill path.
 
 ## Verification
 
@@ -74,4 +138,3 @@ outside transient worktrees.
 When the user asks for research while asking to create or run a Linear plan,
 track the research as issues inside that Linear project rather than doing the
 substantive research before the plan exists.
-
