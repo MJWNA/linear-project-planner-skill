@@ -553,6 +553,8 @@ shellcheck scripts/linear-agent tests/test-linear-agent.sh
 
 ## Deployment / Release
 
+Current production release: `v2.1.2`.
+
 The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases are manual: tag a known-good commit after CI passes, update [CHANGELOG.md](CHANGELOG.md), and use generated GitHub release notes when a versioned release is useful.
 
 The repository includes a GitHub Actions workflow at `.github/workflows/ci.yml`. It runs shell syntax checks, Python syntax checks, YAML parsing, the shell regression test suite, fake Linear GraphQL tests, and a trailing-whitespace scan on every push and pull request.
