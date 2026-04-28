@@ -336,6 +336,23 @@ class LinearAgentGraphQLTests(unittest.TestCase):
             state = json.loads(state_path.read_text(encoding="utf-8"))
             self.assertEqual(state["issues"]["MAS-123"]["state"]["name"], "In Progress")
 
+    def test_redacts_configured_tokens_from_error_messages(self) -> None:
+        from linear_agent.graphql import redact_secrets
+
+        old = os.environ.get("LINEAR_API_KEY")
+        os.environ["LINEAR_API_KEY"] = "secret-token-value"
+        try:
+            redacted = redact_secrets("failure with secret-token-value")
+        finally:
+            if old is None:
+                os.environ.pop("LINEAR_API_KEY", None)
+            else:
+                os.environ["LINEAR_API_KEY"] = old
+        self.assertEqual(
+            redacted,
+            "failure with [REDACTED]",
+        )
+
     def test_ledger_row_parser_respects_escaped_pipes(self) -> None:
         from linear_agent.ledger import existing_worktree, parse_issue_rows, unfinished_issue_rows
 

@@ -74,12 +74,12 @@ class HttpGraphQLTransport(GraphQLTransport):
                 payload = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            raise LinearAgentError(f"Linear HTTP {exc.code}: {detail}") from exc
+            raise LinearAgentError(f"Linear HTTP {exc.code}: {redact_secrets(detail)}") from exc
         except urllib.error.URLError as exc:
-            raise LinearAgentError(f"Linear request failed: {exc.reason}") from exc
+            raise LinearAgentError(f"Linear request failed: {redact_secrets(str(exc.reason))}") from exc
 
         if payload.get("errors"):
-            raise LinearAgentError(f"Linear GraphQL errors: {payload['errors']}")
+            raise LinearAgentError(f"Linear GraphQL errors: {redact_secrets(str(payload['errors']))}")
 
         data = payload.get("data")
         if not isinstance(data, dict):
@@ -311,6 +311,14 @@ def validated_api_url(api_url: str) -> str:
             "LINEAR_AGENT_ALLOW_NON_LINEAR_API_URL=1 is set intentionally."
         )
     return api_url
+
+
+def redact_secrets(value: str) -> str:
+    redacted = value
+    for token in (os.environ.get("LINEAR_API_KEY"), os.environ.get("LINEAR_ACCESS_TOKEN")):
+        if token:
+            redacted = redacted.replace(token, "[REDACTED]")
+    return redacted
 
 
 def apply_transition(issue_id: str, state_name: str, comment: str, action: str) -> None:

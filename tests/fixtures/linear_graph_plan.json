@@ -1,0 +1,47 @@
+{
+  "project": {
+    "name": "Linear Planner 10/10 Production Readiness"
+  },
+  "labels": [
+    "agent-ready",
+    "serial-required",
+    "parallel-safe",
+    "verification-missing"
+  ],
+  "milestones": [
+    "Linear Graph Automation",
+    "CLI & Ledger Architecture",
+    "Verification, CI & Security"
+  ],
+  "issues": [
+    {
+      "key": "MAS-435",
+      "title": "Define full Linear graph plan schema and command contract",
+      "writeSet": [
+        "references/command-schemas.md",
+        "tests/fixtures/linear_graph_plan.json"
+      ],
+      "serial": true
+    },
+    {
+      "key": "MAS-436",
+      "title": "Implement graph-plan dry-run output",
+      "parent": "MAS-435",
+      "blockedBy": [
+        "MAS-435"
+      ],
+      "writeSet": [
+        "lib/linear_agent/graph.py",
+        "lib/linear_agent/cli.py"
+      ],
+      "serial": true
+    },
+    {
+      "key": "MAS-443",
+      "title": "Add shellcheck to local verification and CI",
+      "writeSet": [
+        ".github/workflows/ci.yml"
+      ]
+    }
+  ]
+}

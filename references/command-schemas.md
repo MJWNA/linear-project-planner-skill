@@ -18,6 +18,12 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
 | `linear_project.handoff` | Preserve context for the next agent. | Updates ledger; prints or writes handoff comment. |
 | `linear_project.reconcile` | Compare ledger issue rows with Linear read-back. | Reads Linear; updates drift rows in ledger. |
 | `linear_project.finalize` | Finalize a project ledger after all issue rows are complete. | Updates ledger only after reconciliation, gate outcomes, and evidence. |
+| `linear_project.graph_plan` | Validate and preview a full Linear project graph. | Reads a graph plan file only. |
+| `linear_project.graph_apply` | Idempotently create or update project, labels, milestones, issues, and relationships. | Writes Linear only with explicit apply mode. |
+| `linear_project.graph_readback` | Compare Linear state against a graph plan. | Reads Linear; reports drift and repair guidance. |
+| `linear_project.allocate` | Convert graph and write scopes into parallel agent lanes. | Writes ledger allocation rows only when requested. |
+| `linear_project.inventory` | Draft production/sink gate matrix from a repo scan. | Reads local files only. |
+| `linear_project.smoke` | Run dry-run or secret-gated live Linear smoke checks. | Writes Linear only with explicit apply mode and credentials. |
 
 ## Shared Parameters
 
@@ -27,6 +33,8 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
 - `worktree`: absolute path to the owning worktree when write work is active.
 - `note`: optional human-readable context.
 - `apply_linear`: explicit opt-in for direct Linear writes.
+- `json`: emit stable machine-readable output.
+- `from`: path to a graph plan file for graph and allocation commands.
 
 ## Safety Contract
 
@@ -36,6 +44,42 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
 - `complete` requires verification evidence.
 - `finalize` requires Linear reconciliation, explicit gate outcomes, completed
   issue rows, and a final evidence string or artifact.
+- `graph-plan` must not call Linear.
+- `graph-apply` must be idempotent and dry-run by default.
+- `graph-readback` reports drift without mutating unless paired with explicit apply.
+- `allocate` refuses or reports overlapping write sets before dispatch.
+- `smoke` never runs on normal PRs or forks; live mode is manual and secret-gated.
+
+## Stable Exit Codes
+
+| Code | Meaning |
+|---:|---|
+| 0 | Success, or dry-run found no blocking problem. |
+| 1 | Recoverable drift, validation failure, missing credential, or unsafe operation. |
+| 2 | CLI usage or input error. |
+
+## Graph Plan Shape
+
+```json
+{
+  "project": { "name": "Linear Planner 10/10 Production Readiness" },
+  "labels": ["agent-ready", "serial-required"],
+  "milestones": ["Linear Graph Automation"],
+  "issues": [
+    {
+      "key": "MAS-435",
+      "title": "Define full Linear graph plan schema and command contract",
+      "parent": "",
+      "blockedBy": [],
+      "blocks": ["MAS-436"],
+      "writeSet": ["references/command-schemas.md"],
+      "serial": true
+    }
+  ]
+}
+```
+
+The graph is applied in phases: validate, dry-run, apply, read-back, then repair/report. Existing objects are matched by stable keys before creating anything new.
 
 ## Tool Description Checklist
 

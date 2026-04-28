@@ -6,6 +6,15 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
+## 2.2.0 - 2026-04-28
+
+- Moved the `linear-agent` command engine into typed Python while keeping the shell entrypoint as a thin launcher.
+- Added graph planning, graph apply/read-back, allocation, inventory, smoke, JSON output, and ledger validation command surfaces.
+- Added `EXECUTION.state.json` sidecar generation for deterministic machine-readable ledger state.
+- Added graph feature tests, all-verticals evaluator, graph fixture, production gate templates, operator cheatsheet, migration guide, worked examples, token-scope guidance, and repository hardening policy.
+- Hardened install with `--check`, `--uninstall`, `--with-docs`, PATH validation, and installed license visibility.
+- Expanded CI/release coverage with shellcheck, secret scanning, CodeQL, manual release gate, and manual live Linear smoke workflow.
+
 ## 2.1.2 - 2026-04-28
 
 - Marked the public repository metadata as the current production release line.

@@ -1,0 +1,125 @@
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+BIN = ROOT / "scripts" / "linear-agent"
+
+
+class LinearAgentGraphFeatureTests(unittest.TestCase):
+    def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
+        env = {**os.environ, "PYTHONPATH": str(ROOT / "lib")}
+        return subprocess.run(
+            [str(BIN), *args],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            check=False,
+        )
+
+    def write_plan(self, tmp: Path) -> Path:
+        plan = {
+            "project": {"name": "Example 10/10 Project"},
+            "labels": ["agent-ready", "serial-required"],
+            "milestones": ["Graph Automation"],
+            "issues": [
+                {"key": "MAS-1", "title": "Define schema", "writeSet": ["references/command-schemas.md"]},
+                {"key": "MAS-2", "title": "Apply graph", "parent": "MAS-1", "blockedBy": ["MAS-1"], "writeSet": ["lib/linear_agent/graph.py"], "serial": True},
+                {"key": "MAS-3", "title": "Docs", "writeSet": ["README.md"]},
+            ],
+        }
+        path = tmp / "graph.json"
+        path.write_text(json.dumps(plan), encoding="utf-8")
+        return path
+
+    def test_graph_plan_json_and_readback(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            plan = self.write_plan(tmp)
+            result = self.run_cli("graph-plan", "--from", str(plan), "--json")
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertEqual(payload["summary"]["issues"], 3)
+            self.assertEqual(payload["summary"]["dependencyEdges"], 1)
+
+    def test_graph_apply_fake_state_and_readback(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            plan = self.write_plan(tmp)
+            state = tmp / "linear-state.json"
+            state.write_text("{}", encoding="utf-8")
+            env = {**os.environ, "LINEAR_AGENT_FAKE_STATE": str(state), "LINEAR_AGENT_TEST_MODE": "1"}
+            apply_result = subprocess.run(
+                [str(BIN), "graph-apply", "--from", str(plan), "--apply-linear"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+
+            self.assertEqual(apply_result.returncode, 0, apply_result.stderr)
+            readback = subprocess.run(
+                [str(BIN), "graph-readback", "--from", str(plan)],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+            self.assertEqual(readback.returncode, 0, readback.stderr)
+            self.assertIn("Graph read-back matched fake state", readback.stdout)
+
+    def test_allocate_writes_ledger_rows_and_json_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            plan = self.write_plan(tmp)
+            ledger = tmp / "EXECUTION.md"
+            init = self.run_cli("init", "--ledger", str(ledger), "--project", "Alloc", "--prompt", "test")
+            self.assertEqual(init.returncode, 0, init.stderr)
+
+            result = self.run_cli("allocate", "--from", str(plan), "--ledger", str(ledger))
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            text = ledger.read_text(encoding="utf-8")
+            self.assertIn("| MAS-1 | Codex | agent/mas-1-define-schema |", text)
+            self.assertTrue((tmp / "EXECUTION.state.json").exists())
+
+    def test_validate_ledger_detects_missing_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            ledger = Path(raw) / "EXECUTION.md"
+            ledger.write_text("# Test\n\n## Issue Progress\n\n| Issue | Linear Status | Agent State | Owner/Agent | Worktree | Last Update | Verification |\n|---|---|---|---|---|---|---|\n", encoding="utf-8")
+
+            result = self.run_cli("validate-ledger", "--ledger", str(ledger))
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("missing sidecar", result.stdout)
+
+    def test_inventory_and_smoke_dry_run_are_local_only(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            (tmp / "package.json").write_text("{}", encoding="utf-8")
+            (tmp / "auth.ts").write_text("// auth", encoding="utf-8")
+
+            inventory = self.run_cli("inventory", "--repo", str(tmp), "--json")
+            smoke = self.run_cli("smoke", "--project", "Disposable", "--json")
+
+            self.assertEqual(inventory.returncode, 0, inventory.stderr)
+            self.assertEqual(smoke.returncode, 0, smoke.stderr)
+            self.assertFalse(json.loads(smoke.stdout)["applied"])
+
+
+if __name__ == "__main__":
+    unittest.main()
