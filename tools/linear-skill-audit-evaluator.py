@@ -64,8 +64,7 @@ def main() -> int:
         "maintainability": exists("lib/linear_agent/cli.py")
         and exists("lib/linear_agent/graph.py"),
         "portability": contains("lib/linear_agent/ledger.py", "LINEAR_AGENT_TIMEZONE")
-        and contains("README.md", "Windows")
-        or contains("README.md", "WSL"),
+        and (contains("README.md", "Windows") or contains("README.md", "WSL")),
     }
     payload = {
         "score": sum(1 for ok in checks.values() if ok),

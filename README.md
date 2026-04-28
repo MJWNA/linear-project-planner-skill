@@ -353,6 +353,8 @@ linear-agent init \
   --force
 ```
 
+The `--prompt` value is required. Use the user's original request or the shortest faithful project brief so resumed agents can recover the intent after context compaction.
+
 ### Start Work
 
 ```bash
@@ -601,7 +603,7 @@ shellcheck install.sh scripts/linear-agent tests/test-linear-agent.sh
 
 ## Deployment / Release
 
-Current production release: `v2.2.0`.
+Current production release: `v3.0.0`.
 
 The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases use the manual release workflow after a known-good commit is tagged, [CHANGELOG.md](CHANGELOG.md) is updated, and CI passes.
 
@@ -617,6 +619,7 @@ The repository includes GitHub Actions workflows for CI, CodeQL, a manual releas
 - If `--apply-linear` reports a post-update confirmation failure, run `linear-agent reconcile --ledger <path>` before manually confirming the ledger.
 - If direct mode reports a read-back mismatch, run `linear-agent reconcile --ledger /path/to/EXECUTION.md` before continuing.
 - If Linear state names differ in your workspace, follow the printed MCP actions and record any mismatch in the ledger.
+- If Linear rejects optional project metadata such as `icon`, retry without that cosmetic field and record the workspace validation note in the operating guide or ledger.
 
 ## Support
 

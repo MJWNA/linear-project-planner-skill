@@ -82,6 +82,108 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
             self.assertEqual(readback.returncode, 0, readback.stderr)
             self.assertIn("Graph read-back matched fake state", readback.stdout)
 
+    def test_graph_plan_rejects_blocked_by_cycles(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            plan = tmp / "cycle.json"
+            plan.write_text(
+                json.dumps(
+                    {
+                        "project": {"name": "Cycle"},
+                        "issues": [
+                            {"key": "MAS-1", "title": "One", "blockedBy": ["MAS-2"]},
+                            {"key": "MAS-2", "title": "Two", "blockedBy": ["MAS-1"]},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = self.run_cli("graph-plan", "--from", str(plan))
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("dependency cycle", result.stderr)
+
+    def test_graph_fake_state_requires_test_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            plan = self.write_plan(tmp)
+            state = tmp / "linear-state.json"
+            state.write_text("{}", encoding="utf-8")
+            env = {**os.environ, "LINEAR_AGENT_FAKE_STATE": str(state)}
+
+            apply_result = subprocess.run(
+                [str(BIN), "graph-apply", "--from", str(plan), "--apply-linear"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+            readback_result = subprocess.run(
+                [str(BIN), "graph-readback", "--from", str(plan)],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+            smoke_result = subprocess.run(
+                [str(BIN), "smoke", "--project", "Disposable", "--apply-linear"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+
+            self.assertEqual(apply_result.returncode, 1)
+            self.assertEqual(readback_result.returncode, 1)
+            self.assertEqual(smoke_result.returncode, 1)
+            self.assertIn("LINEAR_AGENT_FAKE_STATE is test-only", apply_result.stderr)
+            self.assertIn("LINEAR_AGENT_FAKE_STATE is test-only", readback_result.stderr)
+            self.assertIn("LINEAR_AGENT_FAKE_STATE is test-only", smoke_result.stderr)
+
+    def test_graph_apply_updates_and_readback_reports_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            plan = self.write_plan(tmp)
+            state = tmp / "linear-state.json"
+            state.write_text("{}", encoding="utf-8")
+            env = {**os.environ, "LINEAR_AGENT_FAKE_STATE": str(state), "LINEAR_AGENT_TEST_MODE": "1"}
+
+            apply_result = subprocess.run(
+                [str(BIN), "graph-apply", "--from", str(plan), "--apply-linear"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+            self.assertEqual(apply_result.returncode, 0, apply_result.stderr)
+            payload = json.loads(state.read_text(encoding="utf-8"))
+            payload["issues"]["MAS-1"]["title"] = "Drifted"
+            state.write_text(json.dumps(payload), encoding="utf-8")
+
+            readback = subprocess.run(
+                [str(BIN), "graph-readback", "--from", str(plan), "--json"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+
+            self.assertEqual(readback.returncode, 1)
+            drift = json.loads(readback.stdout)["drift"]
+            self.assertEqual(drift[0]["field"], "title")
+            self.assertEqual(drift[0]["actual"], "Drifted")
+
     def test_allocate_writes_ledger_rows_and_json_sidecar(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             tmp = Path(raw)
@@ -119,6 +221,28 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
             self.assertEqual(inventory.returncode, 0, inventory.stderr)
             self.assertEqual(smoke.returncode, 0, smoke.stderr)
             self.assertFalse(json.loads(smoke.stdout)["applied"])
+
+    def test_smoke_fake_apply_records_run(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            state = tmp / "linear-state.json"
+            state.write_text("{}", encoding="utf-8")
+            env = {**os.environ, "LINEAR_AGENT_FAKE_STATE": str(state), "LINEAR_AGENT_TEST_MODE": "1"}
+
+            result = subprocess.run(
+                [str(BIN), "smoke", "--project", "Disposable", "--apply-linear", "--json"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)["smokeRuns"], 1)
+            payload = json.loads(state.read_text(encoding="utf-8"))
+            self.assertEqual(payload["smokeRuns"][0]["project"], "Disposable")
 
 
 if __name__ == "__main__":

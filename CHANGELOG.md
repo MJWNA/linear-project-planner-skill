@@ -6,6 +6,16 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 ## Unreleased
 
+## 3.0.0 - 2026-04-28
+
+- Dogfooded the Linear project planner skill against itself through a new v3.0 Linear self-test project and companion ledger.
+- Fixed graph dependency validation so cycles expressed through `blockedBy` fail closed.
+- Hardened fake graph apply/readback/smoke paths so `LINEAR_AGENT_FAKE_STATE` requires `LINEAR_AGENT_TEST_MODE=1`.
+- Made fake graph apply update existing fake issues idempotently and made graph readback report project, label, milestone, title, parent, and dependency drift.
+- Added fake smoke run recording for inspectable local smoke tests.
+- Fixed the all-verticals evaluator portability check so `WSL` alone cannot mask missing timezone/Windows evidence.
+- Documented the required `linear-agent init --prompt` flag and Linear icon metadata fallback discovered during self-dogfooding.
+
 ## 2.2.0 - 2026-04-28
 
 - Moved the `linear-agent` command engine into typed Python while keeping the shell entrypoint as a thin launcher.

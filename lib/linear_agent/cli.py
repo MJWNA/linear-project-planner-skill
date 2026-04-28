@@ -445,6 +445,7 @@ def cmd_graph_apply(args: argparse.Namespace) -> dict[str, Any]:
     state_path = os.environ.get("LINEAR_AGENT_FAKE_STATE")
     if not state_path:
         raise LinearAgentError("graph-apply live GraphQL is intentionally gated; use the Linear MCP or fake transport until live project mutations are configured.")
+    require_fake_test_mode()
     apply_graph_to_fake_state(Path(state_path), plan_to_dict(plan))
     return {"code": 0, **plan_to_dict(plan), "applied": True, "text": "Graph applied to fake Linear state."}
 
@@ -454,14 +455,12 @@ def cmd_graph_readback(args: argparse.Namespace) -> dict[str, Any]:
     state_path = os.environ.get("LINEAR_AGENT_FAKE_STATE")
     if not state_path:
         return {"code": 0, **plan_to_dict(plan), "text": "Graph read-back dry-run: plan is structurally valid."}
+    require_fake_test_mode()
     state = json.loads(Path(state_path).read_text(encoding="utf-8"))
-    missing = [
-        issue.key
-        for issue in plan.issues
-        if issue.key not in state.get("issues", {})
-    ]
-    code = 1 if missing else 0
-    return {"code": code, "missing": missing, "text": "missing issues: " + ", ".join(missing) if missing else "Graph read-back matched fake state."}
+    drift = graph_drift(state, plan_to_dict(plan))
+    code = 1 if drift else 0
+    text = "Graph read-back matched fake state." if not drift else "Graph drift: " + json.dumps(drift, sort_keys=True)
+    return {"code": code, "drift": drift, "text": text}
 
 
 def cmd_allocate(args: argparse.Namespace) -> dict[str, Any]:
@@ -496,7 +495,21 @@ def cmd_smoke(args: argparse.Namespace) -> dict[str, Any]:
             "applied": False,
             "text": f"Smoke dry-run for project {args.project}: no Linear writes performed.",
         }
-    if not (os.environ.get("LINEAR_API_KEY") or os.environ.get("LINEAR_ACCESS_TOKEN") or os.environ.get("LINEAR_AGENT_FAKE_STATE")):
+    state_path = os.environ.get("LINEAR_AGENT_FAKE_STATE")
+    if state_path:
+        require_fake_test_mode()
+        state = json.loads(Path(state_path).read_text(encoding="utf-8")) if Path(state_path).exists() else {}
+        runs = state.setdefault("smokeRuns", [])
+        runs.append({"project": args.project, "timestamp": timestamp(), "mode": "fake"})
+        Path(state_path).write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        return {
+            "code": 0,
+            "project": args.project,
+            "applied": True,
+            "smokeRuns": len(runs),
+            "text": f"Smoke fake apply recorded for {args.project}.",
+        }
+    if not (os.environ.get("LINEAR_API_KEY") or os.environ.get("LINEAR_ACCESS_TOKEN")):
         raise LinearAgentError("smoke --apply-linear requires Linear credentials or fake transport")
     return {"code": 0, "project": args.project, "applied": True, "text": f"Smoke apply gate reached for {args.project}."}
 
@@ -592,25 +605,106 @@ def insert_allocation(ledger: Path, allocation: dict[str, Any]) -> None:
 
 def apply_graph_to_fake_state(path: Path, plan: dict[str, Any]) -> None:
     state = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    state["project"] = plan["project"]
+    state["labels"] = plan["labels"]
+    state["milestones"] = plan["milestones"]
     issues = state.setdefault("issues", {})
     for issue in plan["issues"]:
         key = issue["key"]
-        issues.setdefault(
-            key,
+        current = issues.setdefault(key, {})
+        current.update(
             {
-                "id": f"issue-{key.lower()}",
+                "id": current.get("id", f"issue-{key.lower()}"),
                 "identifier": key,
                 "title": issue["title"],
-                "description": "",
-                "url": f"https://linear.app/example/{key}",
-                "state": {"id": "todo", "name": "Todo", "type": "unstarted"},
-                "team": {"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"},
-                "project": {"id": "project", "name": plan["project"]["name"], "url": "https://linear.app/project"},
-                "comments": {"nodes": []},
-                "updatedAt": "2026-04-28T00:00:00+10:00",
-            },
+                "description": current.get("description", ""),
+                "url": current.get("url", f"https://linear.app/example/{key}"),
+                "state": current.get("state", {"id": "todo", "name": "Todo", "type": "unstarted"}),
+                "team": current.get("team", {"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"}),
+                "project": current.get(
+                    "project",
+                    {"id": "project", "name": plan["project"]["name"], "url": "https://linear.app/project"},
+                ),
+                "comments": current.get("comments", {"nodes": []}),
+                "updatedAt": timestamp(),
+                "labels": issue.get("labels", []),
+                "parent": issue.get("parent", ""),
+                "blocks": issue.get("blocks", []),
+                "blockedBy": issue.get("blocked_by", []),
+            }
         )
     path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def graph_drift(state: dict[str, Any], plan: dict[str, Any]) -> list[dict[str, Any]]:
+    drift: list[dict[str, Any]] = []
+    if state.get("project", {}).get("name") != plan["project"].get("name"):
+        drift.append(
+            {
+                "scope": "project",
+                "field": "name",
+                "expected": plan["project"].get("name"),
+                "actual": state.get("project", {}).get("name"),
+            }
+        )
+    if sorted(state.get("labels", [])) != sorted(plan.get("labels", [])):
+        drift.append(
+            {
+                "scope": "project",
+                "field": "labels",
+                "expected": sorted(plan.get("labels", [])),
+                "actual": sorted(state.get("labels", [])),
+            }
+        )
+    if sorted(state.get("milestones", [])) != sorted(plan.get("milestones", [])):
+        drift.append(
+            {
+                "scope": "project",
+                "field": "milestones",
+                "expected": sorted(plan.get("milestones", [])),
+                "actual": sorted(state.get("milestones", [])),
+            }
+        )
+    issues = state.get("issues", {})
+    for issue in plan["issues"]:
+        actual = issues.get(issue["key"])
+        if not actual:
+            drift.append({"issue": issue["key"], "field": "exists", "expected": "present", "actual": "missing"})
+            continue
+        expected_fields = {
+            "title": issue["title"],
+            "labels": sorted(issue.get("labels", [])),
+            "parent": issue.get("parent", ""),
+            "blocks": sorted(issue.get("blocks", [])),
+            "blockedBy": sorted(issue.get("blocked_by", [])),
+        }
+        actual_fields = {
+            "title": actual.get("title", ""),
+            "labels": sorted(actual.get("labels", [])),
+            "parent": actual.get("parent", ""),
+            "blocks": sorted(actual.get("blocks", [])),
+            "blockedBy": sorted(actual.get("blockedBy", [])),
+        }
+        for field, expected in expected_fields.items():
+            if actual_fields[field] != expected:
+                drift.append(
+                    {
+                        "issue": issue["key"],
+                        "field": field,
+                        "expected": expected,
+                        "actual": actual_fields[field],
+                    }
+                )
+    return drift
+
+
+def require_fake_test_mode() -> None:
+    if os.environ.get("LINEAR_AGENT_TEST_MODE") != "1":
+        raise LinearAgentError(
+            "LINEAR_AGENT_FAKE_STATE is test-only. Set "
+            "LINEAR_AGENT_TEST_MODE=1 for local fake transport tests, "
+            "or unset LINEAR_AGENT_FAKE_STATE before using real Linear."
+        )
 
 
 def require_ledger(path: Path) -> None:

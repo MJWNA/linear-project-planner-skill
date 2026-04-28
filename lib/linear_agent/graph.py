@@ -97,6 +97,9 @@ def validate_graph_plan(plan: GraphPlan) -> None:
 
 def _detect_dependency_cycles(plan: GraphPlan) -> None:
     graph = {issue.key: set(issue.blocks) for issue in plan.issues}
+    for issue in plan.issues:
+        for blocker in issue.blocked_by:
+            graph.setdefault(blocker, set()).add(issue.key)
     visiting: set[str] = set()
     visited: set[str] = set()
 
