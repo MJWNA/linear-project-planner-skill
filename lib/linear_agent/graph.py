@@ -23,6 +23,9 @@ class GraphIssue:
     links: list[dict[str, str]] = field(default_factory=list)
     blocks: list[str] = field(default_factory=list)
     blocked_by: list[str] = field(default_factory=list)
+    related: list[str] = field(default_factory=list)
+    duplicates: list[str] = field(default_factory=list)
+    duplicate_of: list[str] = field(default_factory=list)
     write_set: list[str] = field(default_factory=list)
     serial: bool = False
 
@@ -50,6 +53,9 @@ def load_graph_plan(path: Path) -> GraphPlan:
             links=_load_links(item.get("links") or []),
             blocks=list(item.get("blocks") or []),
             blocked_by=list(item.get("blockedBy") or item.get("blocked_by") or []),
+            related=list(item.get("related") or item.get("relatedTo") or item.get("related_to") or []),
+            duplicates=list(item.get("duplicates") or []),
+            duplicate_of=list(item.get("duplicateOf") or item.get("duplicate_of") or []),
             write_set=list(item.get("writeSet") or item.get("write_set") or []),
             serial=bool(item.get("serial") or item.get("serialRequired")),
         )
@@ -111,7 +117,7 @@ def validate_graph_plan(plan: GraphPlan) -> None:
             raise GraphPlanError(f"duplicate issue key: {issue.key}")
         seen.add(issue.key)
     for issue in plan.issues:
-        refs = [issue.parent, *issue.blocks, *issue.blocked_by]
+        refs = [issue.parent, *issue.blocks, *issue.blocked_by, *issue.related, *issue.duplicates, *issue.duplicate_of]
         for ref in refs:
             if ref and ref not in seen:
                 raise GraphPlanError(f"{issue.key}: unknown issue reference {ref}")
@@ -144,7 +150,14 @@ def _detect_dependency_cycles(plan: GraphPlan) -> None:
 def graph_summary(plan: GraphPlan) -> dict[str, Any]:
     parent_count = len([issue for issue in plan.issues if not issue.parent])
     child_count = len([issue for issue in plan.issues if issue.parent])
-    edge_count = sum(len(issue.blocks) + len(issue.blocked_by) for issue in plan.issues)
+    edge_count = sum(
+        len(issue.blocks)
+        + len(issue.blocked_by)
+        + len(issue.related)
+        + len(issue.duplicates)
+        + len(issue.duplicate_of)
+        for issue in plan.issues
+    )
     described_count = len([issue for issue in plan.issues if issue.description.strip()])
     link_count = sum(len(issue.links) for issue in plan.issues)
     return {
@@ -186,9 +199,15 @@ def render_graph_plan(plan: GraphPlan) -> str:
         milestone = f" milestone={issue.milestone}" if issue.milestone else ""
         blocked = f" blockedBy={','.join(issue.blocked_by)}" if issue.blocked_by else ""
         blocks = f" blocks={','.join(issue.blocks)}" if issue.blocks else ""
+        related = f" related={','.join(issue.related)}" if issue.related else ""
+        duplicates = f" duplicates={','.join(issue.duplicates)}" if issue.duplicates else ""
+        duplicate_of = f" duplicateOf={','.join(issue.duplicate_of)}" if issue.duplicate_of else ""
         described = " described=yes" if issue.description.strip() else " described=no"
         links = f" links={len(issue.links)}" if issue.links else ""
-        lines.append(f"- {issue.key}: {issue.title}{parent}{milestone}{blocked}{blocks}{described}{links}")
+        lines.append(
+            f"- {issue.key}: {issue.title}{parent}{milestone}{blocked}{blocks}"
+            f"{related}{duplicates}{duplicate_of}{described}{links}"
+        )
     return "\n".join(lines)
 
 

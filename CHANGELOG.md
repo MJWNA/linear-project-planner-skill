@@ -8,6 +8,21 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 - Nothing yet.
 
+## 4.0.0 - 2026-04-30
+
+- Aligned live GraphQL mutations with Linear's current schema by replacing the
+  stale project teardown mutation with `projectDelete`.
+- Added `issueBatchCreate` for efficient graph bootstrap while preserving
+  idempotent lookup/update behavior and per-issue read-back verification.
+- Upgraded live project read-back and project-scan reconciliation to follow
+  cursor pagination across all project issues at 250 issues per page.
+- Expanded direct graph support for `related` and `duplicate` issue relations,
+  richer attachment metadata, and attachment read-back drift detection.
+- Added header-aware rate-limit budget tracking on top of the existing
+  `RATELIMITED` / HTTP 429 exponential backoff path.
+- Re-pinned the frozen CLI evaluator for the v4 API contract and refreshed
+  documentation for the direct API mode.
+
 ## 3.6.0 - 2026-04-30
 
 - Lifted the live `graph-apply --apply-linear` gate so project graphs can be

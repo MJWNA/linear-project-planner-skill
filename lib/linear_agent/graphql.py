@@ -42,6 +42,7 @@ class HttpGraphQLTransport(GraphQLTransport):
         self.api_url = api_url
         self.token = token
         self.token_kind = token_kind
+        self.rate_limit_snapshots: list[dict[str, str]] = []
 
     def execute(
         self,
@@ -74,10 +75,11 @@ class HttpGraphQLTransport(GraphQLTransport):
             try:
                 with urllib.request.urlopen(request, timeout=30) as response:
                     payload = json.loads(response.read().decode("utf-8"))
+                    self._record_rate_limit_headers(response.headers)
             except urllib.error.HTTPError as exc:
                 detail = exc.read().decode("utf-8", errors="replace")
                 if exc.code == 429 and attempt < 5:
-                    sleep_with_jitter(attempt)
+                    sleep_with_jitter(attempt, exc.headers.get("Retry-After") if exc.headers else None)
                     continue
                 raise LinearAgentError(f"Linear HTTP {exc.code}: {redact_secrets(detail)}") from exc
             except urllib.error.URLError as exc:
@@ -89,12 +91,23 @@ class HttpGraphQLTransport(GraphQLTransport):
                     sleep_with_jitter(attempt)
                     continue
                 raise LinearAgentError(f"Linear GraphQL errors: {redact_secrets(str(errors))}")
+            maybe_sleep_for_low_budget(self.rate_limit_snapshots[-1] if self.rate_limit_snapshots else {})
             break
 
         data = payload.get("data")
         if not isinstance(data, dict):
             raise LinearAgentError("Linear response missing data object")
         return GraphQLResponse(data=data)
+
+    def _record_rate_limit_headers(self, headers: Any) -> None:
+        header_items = dict(headers.items())
+        snapshot = {
+            key.lower(): value
+            for key, value in header_items.items()
+            if "ratelimit" in key.lower() or "complexity" in key.lower()
+        }
+        if snapshot:
+            self.rate_limit_snapshots.append(snapshot)
 
 
 def is_rate_limited(errors: Any) -> bool:
@@ -110,9 +123,33 @@ def is_rate_limited(errors: Any) -> bool:
     return False
 
 
-def sleep_with_jitter(attempt: int) -> None:
+def sleep_with_jitter(attempt: int, retry_after: str | None = None) -> None:
+    if retry_after:
+        try:
+            time.sleep(min(float(retry_after), 30.0))
+            return
+        except ValueError:
+            pass
     delay = min(8.0, 0.5 * (2**attempt)) + random.uniform(0, 0.25)
     time.sleep(delay)
+
+
+def maybe_sleep_for_low_budget(headers: dict[str, str]) -> None:
+    remaining_values = [
+        headers.get("x-ratelimit-requests-remaining"),
+        headers.get("x-ratelimit-complexity-remaining"),
+        headers.get("ratelimit-remaining"),
+    ]
+    for value in remaining_values:
+        if value is None:
+            continue
+        try:
+            remaining = float(value)
+        except ValueError:
+            continue
+        if remaining <= 1:
+            time.sleep(1.0 + random.uniform(0, 0.25))
+            return
 
 
 class FakeGraphQLTransport(GraphQLTransport):
@@ -295,6 +332,18 @@ class FakeGraphQLTransport(GraphQLTransport):
             self._write_state()
             return GraphQLResponse(data={"issueCreate": {"success": True, "issue": issue}})
 
+        if operation_name == "IssueBatchCreate":
+            created = []
+            for values in variables["input"]["issues"]:
+                team = self._team(values["teamId"])
+                number = len(self.state.setdefault("issues", {})) + 1
+                identifier = values.get("id") or f"{team.get('key', 'MAS')}-{number}"
+                issue = self._issue_from_input(identifier, values)
+                self.state.setdefault("issues", {})[identifier] = issue
+                created.append(issue)
+            self._write_state()
+            return GraphQLResponse(data={"issueBatchCreate": {"success": True, "issues": created}})
+
         if operation_name == "IssueUpdate":
             issue = self._issue_by_internal_id(variables["id"])
             self._apply_issue_input(issue, variables["input"])
@@ -318,7 +367,10 @@ class FakeGraphQLTransport(GraphQLTransport):
             attachment = {
                 "id": variables["input"].get("id") or f"attachment-{len(attachments) + 1}",
                 "title": variables["input"]["title"],
+                "subtitle": variables["input"].get("subtitle") or "",
                 "url": variables["input"]["url"],
+                "metadata": variables["input"].get("metadata") or {},
+                "groupBySource": variables["input"].get("groupBySource") or False,
                 "issue": self._issue_by_internal_id(variables["input"]["issueId"]),
             }
             attachments.append(attachment)
@@ -339,23 +391,27 @@ class FakeGraphQLTransport(GraphQLTransport):
                 if issue.get("project", {}).get("id") == project["id"]
             ]
             first = variables.get("first") or 250
+            after = variables.get("after")
+            start = int(after) if str(after or "").isdigit() else 0
+            page = issues[start:start + first]
+            next_cursor = start + first if start + first < len(issues) else None
             return GraphQLResponse(
                 data={
                     "project": {
                         **project,
                         "issues": {
-                            "nodes": issues[:first],
-                            "pageInfo": {"hasNextPage": False, "endCursor": None},
+                            "nodes": page,
+                            "pageInfo": {"hasNextPage": next_cursor is not None, "endCursor": str(next_cursor) if next_cursor is not None else None},
                         },
                     }
                 }
             )
 
-        if operation_name == "ProjectArchive":
+        if operation_name == "ProjectDelete":
             project = self._project_by_id(variables["id"])
             project["archivedAt"] = self._now()
             self._write_state()
-            return GraphQLResponse(data={"projectArchive": {"success": True}})
+            return GraphQLResponse(data={"projectDelete": {"success": True}})
 
         if operation_name == "IssueArchive":
             issue = self._issue(variables["id"])
@@ -722,7 +778,16 @@ class LinearClient:
         nodes = response.data.get("team", {}).get("issues", {}).get("nodes", [])
         return nodes[0] if nodes else None
 
-    def ensure_issue(
+    def issue_for_plan(self, team_id: str, issue: dict[str, Any]) -> dict[str, Any] | None:
+        identifier = issue.get("identifier") or ""
+        if identifier:
+            try:
+                return self.issue(identifier)
+            except LinearAgentError:
+                pass
+        return self.issue_by_title(team_id, issue["title"])
+
+    def wanted_issue_input(
         self,
         team_id: str,
         project_id: str,
@@ -730,17 +795,7 @@ class LinearClient:
         labels: dict[str, dict[str, Any]],
         milestones: dict[str, dict[str, Any]],
         issues_by_key: dict[str, dict[str, Any]],
-    ) -> tuple[str, dict[str, Any]]:
-        current = None
-        identifier = issue.get("identifier") or ""
-        if identifier:
-            try:
-                current = self.issue(identifier)
-            except LinearAgentError:
-                current = None
-        if not current:
-            current = self.issue_by_title(team_id, issue["title"])
-
+    ) -> dict[str, Any]:
         label_ids = [labels[name]["id"] for name in issue.get("labels", []) if name in labels]
         milestone = milestones.get(issue.get("milestone", ""))
         parent = issues_by_key.get(issue.get("parent", ""))
@@ -753,11 +808,23 @@ class LinearClient:
             "projectMilestoneId": milestone.get("id") if milestone else None,
             "parentId": parent.get("id") if parent else None,
         }
-        wanted = {key: value for key, value in wanted.items() if value is not None}
+        return {key: value for key, value in wanted.items() if value is not None}
+
+    def ensure_issue(
+        self,
+        team_id: str,
+        project_id: str,
+        issue: dict[str, Any],
+        labels: dict[str, dict[str, Any]],
+        milestones: dict[str, dict[str, Any]],
+        issues_by_key: dict[str, dict[str, Any]],
+    ) -> tuple[str, dict[str, Any]]:
+        current = self.issue_for_plan(team_id, issue)
+        wanted = self.wanted_issue_input(team_id, project_id, issue, labels, milestones, issues_by_key)
         if not current:
             response = self.transport.execute("IssueCreate", ISSUE_CREATE, {"input": wanted})
             created = mutation_payload(response, "issueCreate", "issue")
-            return "created", created
+            return "created", self.issue(created["identifier"])
 
         changes = issue_update_changes(current, wanted)
         if not changes:
@@ -773,8 +840,67 @@ class LinearClient:
             raise LinearAgentError(f"Linear issue read-back mismatch after update: {issue['title']}")
         return "updated", read_back
 
+    def ensure_issue_group(
+        self,
+        team_id: str,
+        project_id: str,
+        issues: list[dict[str, Any]],
+        labels: dict[str, dict[str, Any]],
+        milestones: dict[str, dict[str, Any]],
+        issues_by_key: dict[str, dict[str, Any]],
+    ) -> list[tuple[str, str, dict[str, Any]]]:
+        results: list[tuple[str, str, dict[str, Any]]] = []
+        to_create: list[tuple[dict[str, Any], dict[str, Any]]] = []
+        for issue in issues:
+            current = self.issue_for_plan(team_id, issue)
+            wanted = self.wanted_issue_input(team_id, project_id, issue, labels, milestones, issues_by_key)
+            if not current:
+                to_create.append((issue, wanted))
+                continue
+            changes = issue_update_changes(current, wanted)
+            if not changes:
+                results.append((issue["key"], "reused", current))
+                continue
+            response = self.transport.execute(
+                "IssueUpdate",
+                ISSUE_UPDATE,
+                {"id": current["id"], "input": changes},
+            )
+            updated = mutation_payload(response, "issueUpdate", "issue")
+            read_back = self.issue(updated["identifier"])
+            if read_back.get("title") != issue["title"]:
+                raise LinearAgentError(f"Linear issue read-back mismatch after update: {issue['title']}")
+            results.append((issue["key"], "updated", read_back))
+
+        if not to_create:
+            return results
+        if len(to_create) == 1:
+            issue, wanted = to_create[0]
+            response = self.transport.execute("IssueCreate", ISSUE_CREATE, {"input": wanted})
+            created = mutation_payload(response, "issueCreate", "issue")
+            results.append((issue["key"], "created", self.issue(created["identifier"])))
+            return results
+
+        response = self.transport.execute(
+            "IssueBatchCreate",
+            ISSUE_BATCH_CREATE,
+            {"input": {"issues": [wanted for _, wanted in to_create]}},
+        )
+        payload = response.data.get("issueBatchCreate", {})
+        if not payload.get("success"):
+            raise LinearAgentError("Linear issueBatchCreate returned success=false")
+        created_items = payload.get("issues") or []
+        if len(created_items) != len(to_create):
+            raise LinearAgentError(
+                f"Linear issueBatchCreate returned {len(created_items)} issues for {len(to_create)} inputs"
+            )
+        for (issue, _), created in zip(to_create, created_items):
+            results.append((issue["key"], "created", self.issue(created["identifier"])))
+        return results
+
     def ensure_relation(self, issue: dict[str, Any], related: dict[str, Any], relation_type: str) -> tuple[str, dict[str, Any]]:
-        for relation in issue.get("relations", {}).get("nodes", []):
+        current_issue = self.issue(issue.get("identifier") or issue["id"])
+        for relation in current_issue.get("relations", {}).get("nodes", []):
             if (
                 relation.get("type") == relation_type
                 and relation.get("relatedIssue", {}).get("id") == related["id"]
@@ -788,7 +914,8 @@ class LinearClient:
         return "created", mutation_payload(response, "issueRelationCreate", "issueRelation")
 
     def ensure_attachment(self, issue: dict[str, Any], link: dict[str, str]) -> tuple[str, dict[str, Any]]:
-        for attachment in issue.get("attachments", {}).get("nodes", []):
+        current_issue = self.issue(issue.get("identifier") or issue["id"])
+        for attachment in current_issue.get("attachments", {}).get("nodes", []):
             if attachment.get("url") == link["url"]:
                 if attachment.get("title") == link["title"]:
                     return "reused", attachment
@@ -798,30 +925,69 @@ class LinearClient:
                     {"id": attachment["id"], "input": {"title": link["title"]}},
                 )
                 return "updated", mutation_payload(response, "attachmentUpdate", "attachment")
+        metadata = {
+            "source": "linear-project-planner",
+            "issueIdentifier": issue.get("identifier", ""),
+            "issueTitle": issue.get("title", ""),
+        }
+        if link.get("source"):
+            metadata["linkSource"] = link["source"]
         response = self.transport.execute(
             "AttachmentCreate",
             ATTACHMENT_CREATE,
-            {"input": {"issueId": issue["id"], "title": link["title"], "url": link["url"]}},
+            {
+                "input": {
+                    "issueId": issue["id"],
+                    "title": link["title"],
+                    "subtitle": link.get("subtitle") or "linear-project-planner reference",
+                    "url": link["url"],
+                    "metadata": metadata,
+                    "groupBySource": True,
+                }
+            },
         )
         return "created", mutation_payload(response, "attachmentCreate", "attachment")
 
-    def project_readback(self, project: str, first: int = 50, after: str | None = None) -> dict[str, Any]:
-        response = self.transport.execute(
-            "ProjectReadback",
-            PROJECT_READBACK,
-            {"project": project, "first": first, "after": after},
-        )
+    def project_readback_page(self, project: str, first: int = 250, after: str | None = None) -> dict[str, Any]:
+        try:
+            response = self.transport.execute(
+                "ProjectReadback",
+                PROJECT_READBACK,
+                {"project": project, "first": first, "after": after},
+            )
+        except LinearAgentError as exc:
+            if first > 50 and "too complex" in str(exc).lower():
+                return self.project_readback_page(project, first=max(50, first // 2), after=after)
+            raise
         return response.data.get("project") or {}
+
+    def project_readback(self, project: str, first: int = 250, after: str | None = None) -> dict[str, Any]:
+        page = self.project_readback_page(project, first=first, after=after)
+        if after is not None or not page:
+            return page
+        issues = page.setdefault("issues", {})
+        nodes = list(issues.get("nodes", []))
+        page_info = issues.get("pageInfo", {})
+        cursor = page_info.get("endCursor")
+        while page_info.get("hasNextPage"):
+            next_page = self.project_readback_page(project, first=first, after=cursor)
+            next_issues = next_page.get("issues", {})
+            nodes.extend(next_issues.get("nodes", []))
+            page_info = next_issues.get("pageInfo", {})
+            cursor = page_info.get("endCursor")
+        issues["nodes"] = nodes
+        issues["pageInfo"] = {"hasNextPage": False, "endCursor": cursor}
+        return page
 
     def archive_project(self, project_id: str) -> None:
         response = self.transport.execute(
-            "ProjectArchive",
-            PROJECT_ARCHIVE,
+            "ProjectDelete",
+            PROJECT_DELETE,
             {"id": project_id},
         )
-        payload = response.data.get("projectArchive", {})
+        payload = response.data.get("projectDelete", {})
         if not payload.get("success"):
-            raise LinearAgentError("Linear projectArchive returned success=false")
+            raise LinearAgentError("Linear projectDelete returned success=false")
 
     def archive_issue(self, issue_id: str) -> None:
         response = self.transport.execute(
@@ -895,18 +1061,18 @@ def apply_graph(plan: dict[str, Any]) -> dict[str, Any]:
         summary["milestones"][status] += 1
 
     issues_by_key: dict[str, dict[str, Any]] = {}
-    for issue in plan.get("issues", []):
-        if issue.get("parent"):
-            continue
-        status, item = client.ensure_issue(team["id"], project["id"], issue, labels, milestones, issues_by_key)
-        issues_by_key[issue["key"]] = item
+    parent_issues = [issue for issue in plan.get("issues", []) if not issue.get("parent")]
+    child_issues = [issue for issue in plan.get("issues", []) if issue.get("parent")]
+    for issue_key, status, item in client.ensure_issue_group(
+        team["id"], project["id"], parent_issues, labels, milestones, issues_by_key
+    ):
+        issues_by_key[issue_key] = item
         summary["issues"][status] += 1
 
-    for issue in plan.get("issues", []):
-        if not issue.get("parent"):
-            continue
-        status, item = client.ensure_issue(team["id"], project["id"], issue, labels, milestones, issues_by_key)
-        issues_by_key[issue["key"]] = item
+    for issue_key, status, item in client.ensure_issue_group(
+        team["id"], project["id"], child_issues, labels, milestones, issues_by_key
+    ):
+        issues_by_key[issue_key] = item
         summary["issues"][status] += 1
 
     for issue in plan.get("issues", []):
@@ -916,6 +1082,15 @@ def apply_graph(plan: dict[str, Any]) -> dict[str, Any]:
             summary["relations"][status] += 1
         for blocker_key in issue.get("blocked_by", []):
             status, _ = client.ensure_relation(issues_by_key[blocker_key], source, "blocks")
+            summary["relations"][status] += 1
+        for related_key in issue.get("related", []):
+            status, _ = client.ensure_relation(source, issues_by_key[related_key], "related")
+            summary["relations"][status] += 1
+        for duplicate_key in issue.get("duplicates", []):
+            status, _ = client.ensure_relation(source, issues_by_key[duplicate_key], "duplicate")
+            summary["relations"][status] += 1
+        for duplicate_key in issue.get("duplicate_of", []):
+            status, _ = client.ensure_relation(source, issues_by_key[duplicate_key], "duplicate")
             summary["relations"][status] += 1
         for link in issue.get("links", []):
             if not is_allowed_attachment_url(link["url"]):
@@ -952,16 +1127,19 @@ def live_graph_drift(read_back: dict[str, Any], plan: dict[str, Any]) -> list[di
     drift: list[dict[str, Any]] = []
     if read_back.get("name") != plan["project"].get("name"):
         drift.append({"scope": "project", "field": "name", "expected": plan["project"].get("name"), "actual": read_back.get("name")})
-    issues = {issue.get("title"): issue for issue in read_back.get("issues", {}).get("nodes", [])}
+    live_issues = read_back.get("issues", {}).get("nodes", [])
+    issues = {issue.get("title"): issue for issue in live_issues}
     issues_by_identifier = {
         issue.get("identifier"): issue
-        for issue in read_back.get("issues", {}).get("nodes", [])
+        for issue in live_issues
     }
+    actual_by_key: dict[str, dict[str, Any]] = {}
     for expected in plan.get("issues", []):
         actual = issues_by_identifier.get(expected.get("identifier") or "") or issues.get(expected["title"])
         if not actual:
             drift.append({"issue": expected["key"], "field": "exists", "expected": "present", "actual": "missing"})
             continue
+        actual_by_key[expected["key"]] = actual
         if actual.get("title") != expected.get("title"):
             drift.append({"issue": expected["key"], "field": "title", "expected": expected.get("title"), "actual": actual.get("title")})
         actual_description = actual.get("description") or ""
@@ -972,6 +1150,80 @@ def live_graph_drift(read_back: dict[str, Any], plan: dict[str, Any]) -> list[di
         actual_labels = sorted(label.get("name") for label in actual.get("labels", {}).get("nodes", []))
         if expected_labels != actual_labels:
             drift.append({"issue": expected["key"], "field": "labels", "expected": expected_labels, "actual": actual_labels})
+        expected_parent = expected.get("parent", "")
+        actual_parent = ""
+        if actual.get("parent"):
+            parent = actual["parent"]
+            actual_parent = next(
+                (
+                    candidate["key"]
+                    for candidate in plan.get("issues", [])
+                    if parent.get("identifier") == candidate.get("identifier")
+                    or parent.get("title") == candidate.get("title")
+                ),
+                parent.get("identifier", ""),
+            )
+        if expected_parent != actual_parent:
+            drift.append({"issue": expected["key"], "field": "parent", "expected": expected_parent, "actual": actual_parent})
+        expected_milestone = expected.get("milestone", "")
+        actual_milestone = (actual.get("projectMilestone") or {}).get("name", "")
+        if expected_milestone != actual_milestone:
+            drift.append({"issue": expected["key"], "field": "milestone", "expected": expected_milestone, "actual": actual_milestone})
+        expected_links = sorted(
+            [
+                {"title": link.get("title", ""), "url": link.get("url", "")}
+                for link in expected.get("links", [])
+                if is_allowed_attachment_url(link.get("url", ""))
+            ],
+            key=lambda item: (item["title"], item["url"]),
+        )
+        actual_links = sorted(
+            [
+                {"title": link.get("title", ""), "url": link.get("url", "")}
+                for link in actual.get("attachments", {}).get("nodes", [])
+            ],
+            key=lambda item: (item["title"], item["url"]),
+        )
+        if expected_links != actual_links:
+            drift.append({"issue": expected["key"], "field": "attachments", "expected": expected_links, "actual": actual_links})
+    expected_relations: set[tuple[str, str, str]] = set()
+    for expected in plan.get("issues", []):
+        for target in expected.get("blocks", []):
+            expected_relations.add(("blocks", expected["key"], target))
+        for blocker in expected.get("blocked_by", []):
+            expected_relations.add(("blocks", blocker, expected["key"]))
+        for related in expected.get("related", []):
+            expected_relations.add(("related", expected["key"], related))
+        for duplicate in expected.get("duplicates", []):
+            expected_relations.add(("duplicate", expected["key"], duplicate))
+        for duplicate in expected.get("duplicate_of", []):
+            expected_relations.add(("duplicate", expected["key"], duplicate))
+    actual_relations: set[tuple[str, str, str]] = set()
+    for source_key, source in actual_by_key.items():
+        for relation in source.get("relations", {}).get("nodes", []):
+            if relation.get("type") not in {"blocks", "related", "duplicate"}:
+                continue
+            related = relation.get("relatedIssue", {})
+            target_key = next(
+                (
+                    candidate_key
+                    for candidate_key, actual in actual_by_key.items()
+                    if actual.get("id") == related.get("id")
+                    or actual.get("identifier") == related.get("identifier")
+                    or actual.get("title") == related.get("title")
+                ),
+                related.get("identifier", ""),
+            )
+            actual_relations.add((relation.get("type", ""), source_key, target_key))
+    if expected_relations != actual_relations:
+        drift.append(
+            {
+                "scope": "relations",
+                "field": "issueRelations",
+                "expected": sorted(expected_relations),
+                "actual": sorted(actual_relations),
+            }
+        )
     return drift
 
 
@@ -1127,7 +1379,7 @@ fragment IssueFields on Issue {
     }
   }
   attachments(first: 100) {
-    nodes { id title url }
+    nodes { id title subtitle url metadata }
   }
   comments(first: 20) {
     nodes { id body createdAt user { id name } }
@@ -1265,6 +1517,20 @@ mutation IssueCreate($input: IssueCreateInput!) {
 }
 """ + ISSUE_FIELDS
 
+ISSUE_BATCH_CREATE = """
+mutation IssueBatchCreate($input: IssueBatchCreateInput!) {
+  issueBatchCreate(input: $input) {
+    success
+    issues {
+      id
+      identifier
+      title
+      url
+    }
+  }
+}
+"""
+
 ISSUE_UPDATE = """
 mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) {
   issueUpdate(id: $id, input: $input) {
@@ -1292,7 +1558,7 @@ ATTACHMENT_CREATE = """
 mutation AttachmentCreate($input: AttachmentCreateInput!) {
   attachmentCreate(input: $input) {
     success
-    attachment { id title url issue { id identifier title } }
+    attachment { id title subtitle url metadata issue { id identifier title } }
   }
 }
 """
@@ -1301,7 +1567,7 @@ ATTACHMENT_UPDATE = """
 mutation AttachmentUpdate($id: String!, $input: AttachmentUpdateInput!) {
   attachmentUpdate(id: $id, input: $input) {
     success
-    attachment { id title url issue { id identifier title } }
+    attachment { id title subtitle url metadata issue { id identifier title } }
   }
 }
 """
@@ -1334,7 +1600,7 @@ query ProjectReadback($project: String!, $first: Int!, $after: String) {
             relatedIssue { id identifier title }
           }
         }
-        attachments(first: 10) { nodes { id title url } }
+        attachments(first: 10) { nodes { id title subtitle url metadata } }
       }
       pageInfo { hasNextPage endCursor }
     }
@@ -1342,9 +1608,9 @@ query ProjectReadback($project: String!, $first: Int!, $after: String) {
 }
 """
 
-PROJECT_ARCHIVE = """
-mutation ProjectArchive($id: String!) {
-  projectArchive(id: $id) {
+PROJECT_DELETE = """
+mutation ProjectDelete($id: String!) {
+  projectDelete(id: $id) {
     success
   }
 }

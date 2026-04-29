@@ -630,7 +630,7 @@ assert_not_contains "$ACTIVE_FINALIZE_LEDGER" "- Overall status: completed"
   --ledger "$LEDGER" \
   --agent "Codex" \
   --verification "all Linear issues done; fixed evaluator passed" \
-  --evidence "Linear read-back: all issue rows Done; evaluator SCORE 170/170" \
+  --evidence "Linear read-back: all issue rows Done; evaluator SCORE 200/200" \
   --linear-reconciled \
   --dependencies "not-applicable:no blocking dependencies were required" \
   --production-gates "not-applicable:not a production application" \
@@ -652,7 +652,7 @@ assert_contains "$LEDGER" "- [x] First issue chosen by dependency order"
 assert_contains "$LEDGER" "- [x] Follow-up issues created or linked"
 assert_contains "$LEDGER" "- [x] Final ledger reconciliation completed"
 assert_not_contains "$LEDGER" "|  |  |  |  |  |  |  |"
-assert_contains "$LEDGER" "Finalized ledger. Agent: Codex. Verification: all Linear issues done; fixed evaluator passed. Evidence: Linear read-back: all issue rows Done; evaluator SCORE 170/170. Note: Project-level checklist reconciled."
+assert_contains "$LEDGER" "Finalized ledger. Agent: Codex. Verification: all Linear issues done; fixed evaluator passed. Evidence: Linear read-back: all issue rows Done; evaluator SCORE 200/200. Note: Project-level checklist reconciled."
 assert_contains "$TMP_DIR/finalize.out" "Required Linear MCP actions"
 assert_contains "$TMP_DIR/finalize.out" "_save_comment(issueId=\"<operating-guide-or-final-verification-issue>\""
 assert_contains "$TMP_DIR/finalize.out" "Verify with Linear project read-back"
