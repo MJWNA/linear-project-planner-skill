@@ -8,6 +8,23 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 - Nothing yet.
 
+## 3.6.0 - 2026-04-30
+
+- Lifted the live `graph-apply --apply-linear` gate so project graphs can be
+  created directly through Linear's GraphQL API without requiring a Linear MCP
+  server for project creation.
+- Added idempotent direct GraphQL operations for projects, labels, milestones,
+  issues, issue relations, and attachments, with fake transport handlers,
+  rate-limit retries, mutation success checks, and read-back verification.
+- Added live graph read-back and project-scan reconciliation so the CLI can
+  detect Linear issues missing from the ledger and ledger rows missing from
+  Linear.
+- Added `linear-agent discover` and `linear-agent promote` for Continuous Issue
+  Discovery rows and optional live Linear issue creation.
+- Updated live Linear smoke coverage, docs, evaluator expectations, and the ADR
+  trail for direct API mode. Linear MCP remains a fallback for runtimes without
+  credentials, not the graph-creation source of truth.
+
 ## 3.5.0 - 2026-04-30
 
 - Added a live dogfood evaluator with small, medium, large, expanded-mode, and

@@ -34,10 +34,11 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
             "issues": [
                 {
                     "key": "MAS-1",
+                    "identifier": "MAS-1",
                     "title": "Define schema",
                     "description": "## Objective\nDefine schema.\n\n## Acceptance Criteria\n- Done.\n\n## Verification\nRun graph-plan.",
                     "milestone": "Graph Automation",
-                    "links": [{"title": "Schema docs", "url": "file://references/command-schemas.md"}],
+                    "links": [{"title": "Schema docs", "url": "https://github.com/MJWNA/linear-project-planner-skill/blob/main/references/command-schemas.md"}],
                     "writeSet": ["references/command-schemas.md"],
                 },
                 {"key": "MAS-2", "title": "Apply graph", "parent": "MAS-1", "blockedBy": ["MAS-1"], "writeSet": ["lib/linear_agent/graph.py"], "serial": True},
@@ -64,8 +65,14 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
             tmp = Path(raw)
             plan = self.write_plan(tmp)
             state = tmp / "linear-state.json"
+            requests = tmp / "requests.jsonl"
             state.write_text("{}", encoding="utf-8")
-            env = {**os.environ, "LINEAR_AGENT_FAKE_STATE": str(state), "LINEAR_AGENT_TEST_MODE": "1"}
+            env = {
+                **os.environ,
+                "LINEAR_AGENT_FAKE_STATE": str(state),
+                "LINEAR_AGENT_FAKE_REQUESTS": str(requests),
+                "LINEAR_AGENT_TEST_MODE": "1",
+            }
             apply_result = subprocess.run(
                 [str(BIN), "graph-apply", "--from", str(plan), "--apply-linear"],
                 cwd=ROOT,
@@ -87,7 +94,41 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(readback.returncode, 0, readback.stderr)
-            self.assertIn("Graph read-back matched fake state", readback.stdout)
+            self.assertIn("Graph read-back matched Linear state", readback.stdout)
+            operations = [
+                json.loads(line)["operationName"]
+                for line in requests.read_text(encoding="utf-8").splitlines()
+            ]
+            for operation in (
+                "Teams",
+                "ProjectCreate",
+                "IssueLabelCreate",
+                "ProjectMilestoneCreate",
+                "IssueCreate",
+                "IssueRelationCreate",
+                "AttachmentCreate",
+                "ProjectReadback",
+            ):
+                self.assertIn(operation, operations)
+            payload = json.loads(plan.read_text(encoding="utf-8"))
+            payload["issues"][0]["description"] += "\nUpdated."
+            plan.write_text(json.dumps(payload), encoding="utf-8")
+            requests.write_text("", encoding="utf-8")
+            update_result = subprocess.run(
+                [str(BIN), "graph-apply", "--from", str(plan), "--apply-linear"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+            self.assertEqual(update_result.returncode, 0, update_result.stderr)
+            update_operations = [
+                json.loads(line)["operationName"]
+                for line in requests.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertIn("IssueUpdate", update_operations)
 
     def test_graph_plan_rejects_blocked_by_cycles(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -252,6 +293,32 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
             self.assertEqual(json.loads(result.stdout)["smokeRuns"], 1)
             payload = json.loads(state.read_text(encoding="utf-8"))
             self.assertEqual(payload["smokeRuns"][0]["project"], "Disposable")
+
+    def test_discover_propose_records_continuous_discovery_row(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            ledger = Path(raw) / "EXECUTION.md"
+            init = self.run_cli("init", "--ledger", str(ledger), "--project", "Discovery", "--prompt", "test")
+            self.assertEqual(init.returncode, 0, init.stderr)
+
+            result = self.run_cli(
+                "discover",
+                "--classification",
+                "QA gap",
+                "--surfaced-by",
+                "MAS-123",
+                "--reason",
+                "Need live graph-readback coverage",
+                "--acceptance",
+                "Read-back drift is reported",
+                "--ledger",
+                str(ledger),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            text = ledger.read_text(encoding="utf-8")
+            self.assertIn("QA gap", text)
+            self.assertIn("Need live graph-readback coverage", text)
+            self.assertIn("proposed", text)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,11 @@
 
 Agent-ready Linear project planning, execution tracking, and cross-session handoff for Codex-first, Claude-compatible skill runtimes.
 
+> **Live API mode:** Linear MCP is no longer required for graph creation. With
+> `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN`, `linear-agent graph-apply
+> --apply-linear` creates and updates projects, labels, milestones, issues,
+> relations, and attachments directly through `https://api.linear.app/graphql`.
+
 This skill helps an AI agent turn a Linear project into a real execution system. Instead of producing a flat backlog and hoping future agents remember what happened, it creates a structured operating model: milestones, parent workstreams, guide issues, labels, verification gates, issue-state hygiene, and a companion Markdown execution ledger that survives context resets.
 
 The core idea is simple: Linear is the canonical project tracker, but agents also need a durable local memory file that explains the original prompt, the current state, which tasks are done, which issue is active, what was verified, and what the next safest action is.
@@ -104,7 +109,7 @@ The skill keeps the front-door instructions compact and moves deeper contracts i
 - `templates/EXECUTION.md`: living ledger template.
 - `templates/project-principles.md`: full companion principles document for larger, ambiguous, or expanded-mode projects.
 - `scripts/linear-agent`: shell CLI for ledger transitions, direct Linear mode, reconciliation, and finalization.
-- `references/command-schemas.md`: proposed `linear_project.*` structured tool contract.
+- `references/command-schemas.md`: implemented `linear_project.*` CLI contract and future structured tool contract.
 - `references/runtime-state.md`: model/runtime and Responses API state guidance.
 - `references/expanded-mode.md`: opt-in long-horizon workflow for deep research, local docs, dependency maps, provenance, safe multi-agent allocation, dogfood, and baseline contamination safeguards.
 - `references/operator-cheatsheet.md`: one-page operator path and minimal safe issue set.
@@ -242,7 +247,10 @@ The detailed workflow lives in [references/expanded-mode.md](references/expanded
 
 ### 3. Execute With `linear-agent`
 
-The wrapper updates the local ledger first and prints the Linear MCP actions the agent still needs to perform. This keeps the local execution memory and Linear board from drifting apart.
+The wrapper updates the local ledger and, when `--apply-linear` or
+`LINEAR_AGENT_APPLY=1` is set, writes the matching Linear state/comment through
+the GraphQL API before read-back verification. Dry-run mode remains available
+for credentials-free runtimes and prints the manual fallback actions.
 
 Example:
 
@@ -343,7 +351,7 @@ When deep auto-research is enabled, the final Linear tasks should be explicit en
 - `Create follow-up tasks for non-green or inconclusive checks`
 - `Re-run evaluator until stable across repeated passes`
 
-For this skill, a valid final loop means the frozen evaluator prints `SCORE 130/130`, shell and Python regression tests pass, `linear-agent reconcile` has no drift for real issue rows, and any blocked Linear behavior is recorded as blocked rather than completed.
+For this skill, a valid final loop means the frozen evaluator prints `SCORE 170/170`, shell and Python regression tests pass, `linear-agent reconcile` has no drift for real issue rows, and any blocked Linear behavior is recorded as blocked rather than completed.
 
 ### 6. Handoff Or Finalize
 
@@ -595,6 +603,37 @@ It also installs a launcher at:
 
 Make sure `~/.local/bin` is on your `PATH` if you want to run `linear-agent` from anywhere.
 
+Create a project graph plan, preview it, then apply it live:
+
+```bash
+linear-agent graph-plan --from tests/fixtures/linear_graph_plan.json
+LINEAR_API_KEY=lin_api_... linear-agent graph-apply \
+  --from tests/fixtures/linear_graph_plan.json \
+  --apply-linear
+linear-agent graph-readback --from tests/fixtures/linear_graph_plan.json
+```
+
+Default mode is still dry-run. Linear mutations require `--apply-linear` or
+`LINEAR_AGENT_APPLY=1`.
+
+### Finding Your Linear API Key
+
+For local development, a personal Linear API key is enough:
+
+1. Open Linear in the browser.
+2. Go to Settings -> Workspace settings -> API -> Personal API keys.
+3. Create a key with access to the workspace/team you want this skill to manage.
+4. Store it outside this public repo, for example:
+
+```bash
+mkdir -p ../.codex-linear-secrets
+printf 'LINEAR_API_KEY=lin_api_...\\n' > ../.codex-linear-secrets/linear.env
+chmod 600 ../.codex-linear-secrets/linear.env
+source ../.codex-linear-secrets/linear.env
+```
+
+Never commit the key, `.env` files, local ledgers, or Linear workspace exports.
+
 ## Configuration
 
 The skill is configured through committed files:
@@ -633,11 +672,11 @@ See [docs/claude-portability.md](docs/claude-portability.md) for the exact suppo
 
 The skill is tested on macOS/Linux style shells. On Windows, use WSL with Bash and Python 3, then run the repo checkout directly or install into the WSL home directory. For no-install mode, run `scripts/linear-agent` from the repo checkout.
 
-### Manual Linear Smoke Tests
+### Live Linear Smoke Tests
 
-Normal CI uses hermetic fake Linear transport so pull requests do not mutate a real Linear workspace or require secrets. Live Linear smoke testing is intentionally manual and secret-gated because it creates or updates real workspace objects, consumes API quota, and needs a disposable target project.
+Normal CI uses hermetic fake Linear transport so pull requests do not mutate a real Linear workspace or require secrets. Live Linear smoke testing is secret-gated because it creates or updates real workspace objects, consumes API quota, and needs a disposable target project.
 
-Run the manual smoke workflow for release candidates, GraphQL transport changes, state transition changes, install/runtime changes, or before major version releases. Record the disposable target, commands, cleanup, and result in the release notes or Linear verification issue.
+Run the smoke workflow for release candidates, GraphQL transport changes, state transition changes, install/runtime changes, or before major version releases. The scheduled workflow is skipped unless `LINEAR_API_KEY` is configured, and the dispatch path still requires an explicit `apply-linear` input. Record the disposable target, commands, cleanup, and result in the release notes or Linear verification issue.
 
 See [docs/manual-linear-smoke.md](docs/manual-linear-smoke.md) for the checklist and evidence pattern.
 
@@ -654,7 +693,7 @@ python3 tools/linear-agent-evaluator.py
 python3 tools/linear-skill-audit-evaluator.py
 ```
 
-The front-door evaluator protects trigger reliability after `SKILL.md` changes. The main evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 130/130`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
+The front-door evaluator protects trigger reliability after `SKILL.md` changes. The main evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 170/170`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
 
 Run syntax checks:
 
@@ -673,13 +712,13 @@ shellcheck install.sh scripts/linear-agent tests/test-linear-agent.sh
 
 ## Deployment / Release
 
-Current production release: `v3.0.0`.
+Current production release: `v3.6.0`.
 
 The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases use the manual release workflow after a known-good commit is tagged, [CHANGELOG.md](CHANGELOG.md) is updated, and CI passes.
 
-The repository includes GitHub Actions workflows for CI, CodeQL, a manual release gate, and a manual live Linear smoke check. CI runs shell syntax, shellcheck, Python syntax, YAML parsing, secret scanning, regression tests, fake Linear GraphQL tests, graph feature tests, evaluators, and trailing-whitespace checks on every push and pull request.
+The repository includes GitHub Actions workflows for CI, CodeQL, a manual release gate, and a scheduled/manual live Linear smoke check. CI runs shell syntax, shellcheck, Python syntax, YAML parsing, secret scanning, regression tests, fake Linear GraphQL tests, graph feature tests, evaluators, and trailing-whitespace checks on every push and pull request.
 
-The live Linear smoke workflow is not expected to run on every pull request. Treat it as a manual release/readiness gate when the change could affect real Linear API behavior.
+The live Linear smoke workflow is not expected to run on normal pull requests. Treat it as a scheduled and manual release/readiness gate when the change could affect real Linear API behavior.
 
 ## Troubleshooting
 
@@ -687,10 +726,10 @@ The live Linear smoke workflow is not expected to run on every pull request. Tre
 - If `init` refuses to write the ledger, the file already exists. Use `--force` only when replacing it is intentional.
 - If `complete` fails, add a concrete `--verification` string.
 - If `start --parallel-write` fails, provide a `--worktree` path so write-capable agents do not share one checkout.
-- If `--apply-linear` fails with missing credentials, set `LINEAR_API_KEY` or use default dry-run mode and perform the printed MCP actions.
+- If `--apply-linear` fails with missing credentials, set `LINEAR_API_KEY`, set `LINEAR_ACCESS_TOKEN`, or use default dry-run mode and perform the printed fallback actions.
 - If `--apply-linear` reports a post-update confirmation failure, run `linear-agent reconcile --ledger <path>` before manually confirming the ledger.
 - If direct mode reports a read-back mismatch, run `linear-agent reconcile --ledger /path/to/EXECUTION.md` before continuing.
-- If Linear state names differ in your workspace, follow the printed MCP actions and record any mismatch in the ledger.
+- If Linear state names differ in your workspace, set the `LINEAR_STATE_*` override variables or record the mismatch in the ledger before continuing.
 - If Linear rejects optional project metadata such as `icon`, retry without that cosmetic field and record the workspace validation note in the operating guide or ledger.
 
 ## Support
@@ -721,8 +760,9 @@ This project is released under the MIT License. See [LICENSE](LICENSE).
 
 ## Current Limitations
 
-- Direct Linear API mode currently covers issue transitions, comments, read-back verification, and ledger reconciliation. Project/label/dependency creation remains handled by the Linear MCP tools and skill workflow.
-- Default dry-run mode still updates the ledger and prints the required Linear MCP actions instead of making API calls.
+- Linear attachments require allowed HTTP(S) URLs. Local `file://` ledger paths should stay in issue bodies or ledger text, not attachment URLs.
+- Project read-back uses a complexity-budgeted page size so rich issue scans stay under Linear's GraphQL limit.
+- Default dry-run mode still avoids Linear API calls unless `--apply-linear` or `LINEAR_AGENT_APPLY=1` is set.
 - Workspace-specific Linear state names may vary. The skill assumes simple state names such as `To Do`, `In Progress`, `Done`, and `Canceled`.
 - The included install script targets Codex-style local skill paths; Claude use is currently manual and documented in `docs/claude-portability.md`.
 
