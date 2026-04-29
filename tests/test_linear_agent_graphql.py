@@ -353,6 +353,13 @@ class LinearAgentGraphQLTests(unittest.TestCase):
             "failure with [REDACTED]",
         )
 
+    def test_rate_limit_detection_accepts_linear_error_codes(self) -> None:
+        from linear_agent.graphql import is_rate_limited
+
+        self.assertTrue(is_rate_limited([{"extensions": {"code": "RATELIMITED"}}]))
+        self.assertTrue(is_rate_limited([{"message": "Rate limit exceeded"}]))
+        self.assertFalse(is_rate_limited([{"extensions": {"code": "BAD_USER_INPUT"}}]))
+
     def test_ledger_row_parser_respects_escaped_pipes(self) -> None:
         from linear_agent.ledger import existing_worktree, parse_issue_rows, unfinished_issue_rows
 

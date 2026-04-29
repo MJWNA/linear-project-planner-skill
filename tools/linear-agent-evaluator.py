@@ -102,7 +102,7 @@ def main() -> int:
             "docs explain direct mode",
             10,
             contains("README.md", "--apply-linear")
-            and contains("README.md", "SCORE 170/170")
+            and contains("README.md", "SCORE 200/200")
             and contains("SKILL.md", "LINEAR_API_KEY")
             and contains("README.md", "linear-agent reconcile")
             and contains("lib/linear_agent/cli.py", "finalize refuses unfinished issue rows")
@@ -166,6 +166,7 @@ def main() -> int:
             contains("lib/linear_agent/graphql.py", "ProjectCreate")
             and contains("lib/linear_agent/graphql.py", "IssueLabelCreate")
             and contains("lib/linear_agent/graphql.py", "ProjectMilestoneCreate")
+            and contains("lib/linear_agent/graphql.py", "IssueBatchCreate")
             and contains("lib/linear_agent/graphql.py", "IssueRelationCreate")
             and contains("lib/linear_agent/graphql.py", "AttachmentCreate")
             and contains("lib/linear_agent/cli.py", "Graph applied to Linear and read-back verified"),
@@ -189,7 +190,8 @@ def main() -> int:
             contains("README.md", "Linear MCP is no longer required")
             and contains("SKILL.md", "## Live API Mode")
             and contains("references/command-schemas.md", "Live API Mode")
-            and contains("docs/research/direct-linear-graphql-adr.md", "Direct Linear GraphQL"),
+            and contains("docs/research/direct-linear-graphql-adr.md", "Direct Linear GraphQL")
+            and contains("docs/research/linear-api-v4-efficiency-adr.md", "Linear API v4 Efficiency"),
             "missing direct API docs or ADR",
         )
     )
@@ -199,8 +201,33 @@ def main() -> int:
             5,
             contains(".github/workflows/live-linear-smoke.yml", "schedule:")
             and contains(".github/workflows/live-linear-smoke.yml", "linear-agent smoke")
-            and contains("lib/linear_agent/graphql.py", "ProjectArchive"),
+            and contains("lib/linear_agent/graphql.py", "ProjectDelete"),
             "missing scheduled graph smoke workflow",
+        )
+    )
+    checks.append(
+        (
+            "schema-current API efficiency",
+            20,
+            contains("lib/linear_agent/graphql.py", "issueBatchCreate")
+            and contains("lib/linear_agent/graphql.py", "projectDelete")
+            and contains("lib/linear_agent/graphql.py", "pageInfo")
+            and contains("lib/linear_agent/graphql.py", "while page_info.get(\"hasNextPage\")")
+            and contains("lib/linear_agent/graphql.py", "x-ratelimit-complexity-remaining")
+            and contains("tests/test_linear_agent_graph_features.py", "test_project_readback_paginates_all_issues"),
+            "missing batch create, schema-current teardown, pagination, or rate-limit budget coverage",
+        )
+    )
+    checks.append(
+        (
+            "rich relation and attachment graph",
+            10,
+            contains("lib/linear_agent/graph.py", "duplicate_of")
+            and contains("lib/linear_agent/graphql.py", "\"related\"")
+            and contains("lib/linear_agent/graphql.py", "\"duplicate\"")
+            and contains("lib/linear_agent/graphql.py", "\"linear-project-planner\"")
+            and contains("tests/test_linear_agent_graph_features.py", "test_graph_apply_related_duplicate_and_attachment_metadata"),
+            "missing related/duplicate relation or attachment metadata coverage",
         )
     )
 
@@ -214,8 +241,8 @@ def main() -> int:
             if detail:
                 print(detail.rstrip())
 
-    print(f"SCORE {score}/170")
-    return 0 if score == 170 else 1
+    print(f"SCORE {score}/200")
+    return 0 if score == 200 else 1
 
 
 if __name__ == "__main__":

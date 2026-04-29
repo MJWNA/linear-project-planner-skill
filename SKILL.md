@@ -262,12 +262,15 @@ available.
 Supported live operations:
 
 - `projectCreate` / `projectUpdate`
+- `projectDelete` for disposable smoke teardown
 - `issueLabelCreate` / `issueLabelUpdate`
 - `projectMilestoneCreate` / `projectMilestoneUpdate`
-- `issueCreate` / `issueUpdate`
-- `issueRelationCreate`
-- `attachmentCreate` / `attachmentUpdate`
-- project issue read-back for `graph-readback` and `reconcile --project`
+- `issueCreate` / `issueBatchCreate` / `issueUpdate`
+- `issueRelationCreate` for `blocks`, `related`, and `duplicate` relations
+- `attachmentCreate` / `attachmentUpdate` with source metadata
+- paginated project issue read-back for `graph-readback` and
+  `reconcile --project`, starting at 250 issues per page and reducing the page
+  size if Linear reports query complexity pressure
 
 Idempotence keys:
 
@@ -279,8 +282,13 @@ Idempotence keys:
 - Attachment: `(issueId, url)`
 
 Every live mutation must check Linear's `success` flag, read the affected graph
-back, and fail closed if confirmation disagrees. Default mode remains dry-run;
-mutations require `--apply-linear` or `LINEAR_AGENT_APPLY=1`.
+back, and fail closed if confirmation disagrees. Project scans must follow
+Linear cursor pagination so large plans do not silently hide drift after the
+first page, and they should adapt page size when a rich read-back selection
+exceeds Linear's query complexity budget. The HTTP transport should respect
+`RATELIMITED` / HTTP 429 responses and Linear rate-limit or complexity headers
+before retrying. Default mode remains dry-run; mutations require `--apply-linear` or
+`LINEAR_AGENT_APPLY=1`.
 
 ## Execution State Hygiene
 

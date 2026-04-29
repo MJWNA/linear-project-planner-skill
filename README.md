@@ -9,6 +9,9 @@ Agent-ready Linear project planning, execution tracking, and cross-session hando
 > `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN`, `linear-agent graph-apply
 > --apply-linear` creates and updates projects, labels, milestones, issues,
 > relations, and attachments directly through `https://api.linear.app/graphql`.
+> Version 4.0 adds schema-current teardown, batch issue creation, full
+> project-scan pagination, richer attachment metadata, and rate-limit budget
+> awareness.
 
 This skill helps an AI agent turn a Linear project into a real execution system. Instead of producing a flat backlog and hoping future agents remember what happened, it creates a structured operating model: milestones, parent workstreams, guide issues, labels, verification gates, issue-state hygiene, and a companion Markdown execution ledger that survives context resets.
 
@@ -351,7 +354,7 @@ When deep auto-research is enabled, the final Linear tasks should be explicit en
 - `Create follow-up tasks for non-green or inconclusive checks`
 - `Re-run evaluator until stable across repeated passes`
 
-For this skill, a valid final loop means the frozen evaluator prints `SCORE 170/170`, shell and Python regression tests pass, `linear-agent reconcile` has no drift for real issue rows, and any blocked Linear behavior is recorded as blocked rather than completed.
+For this skill, a valid final loop means the frozen evaluator prints `SCORE 200/200`, shell and Python regression tests pass, `linear-agent reconcile` has no drift for real issue rows, and any blocked Linear behavior is recorded as blocked rather than completed.
 
 ### 6. Handoff Or Finalize
 
@@ -693,7 +696,7 @@ python3 tools/linear-agent-evaluator.py
 python3 tools/linear-skill-audit-evaluator.py
 ```
 
-The front-door evaluator protects trigger reliability after `SKILL.md` changes. The main evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 170/170`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
+The front-door evaluator protects trigger reliability after `SKILL.md` changes. The main evaluator is the frozen Karpathy-style release score for this skill. A release candidate should print `SCORE 200/200`; if the score drops, treat the change as a failed experiment and fix or revert before publishing.
 
 Run syntax checks:
 
@@ -712,7 +715,7 @@ shellcheck install.sh scripts/linear-agent tests/test-linear-agent.sh
 
 ## Deployment / Release
 
-Current production release: `v3.6.0`.
+Current production release: `v4.0.0`.
 
 The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases use the manual release workflow after a known-good commit is tagged, [CHANGELOG.md](CHANGELOG.md) is updated, and CI passes.
 
@@ -761,7 +764,10 @@ This project is released under the MIT License. See [LICENSE](LICENSE).
 ## Current Limitations
 
 - Linear attachments require allowed HTTP(S) URLs. Local `file://` ledger paths should stay in issue bodies or ledger text, not attachment URLs.
-- Project read-back uses a complexity-budgeted page size so rich issue scans stay under Linear's GraphQL limit.
+- Project read-back starts at 250 issues per page and follows Linear cursor pagination so large projects can be reconciled without hiding issues after the first page. If Linear reports query complexity pressure, the page size is reduced automatically and the scan continues.
+- Large graph bootstraps use `issueBatchCreate` where parent or child issue groups can be created safely in one API mutation; existing or drifted issues are still handled idempotently one issue at a time.
+- Attachments created by this skill include source metadata so links can be audited as `linear-project-planner` references in Linear.
+- The transport retries `RATELIMITED` and HTTP 429 responses and records Linear rate-limit or complexity headers to slow down before exhausting the budget.
 - Default dry-run mode still avoids Linear API calls unless `--apply-linear` or `LINEAR_AGENT_APPLY=1` is set.
 - Workspace-specific Linear state names may vary. The skill assumes simple state names such as `To Do`, `In Progress`, `Done`, and `Canceled`.
 - The included install script targets Codex-style local skill paths; Claude use is currently manual and documented in `docs/claude-portability.md`.

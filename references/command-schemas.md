@@ -129,8 +129,8 @@ in this order:
 1. Project
 2. Labels
 3. Milestones
-4. Parent issues
-5. Child issues
+4. Parent issues, using `issueBatchCreate` when multiple new parents are absent
+5. Child issues, using `issueBatchCreate` when parents are already known
 6. Relations
 7. Attachments
 
@@ -141,13 +141,17 @@ Idempotence keys:
 | Project | `(team.id, name)` | create | reuse | update changed fields |
 | Milestone | `(project.id, name)` | create | reuse | update changed fields |
 | Label | `(team.id, name)` | create | reuse | update explicit color/description drift |
-| Issue | explicit `identifier`; else `(team.id, title)` | create | reuse | update body/labels/parent/milestone |
+| Issue | explicit `identifier`; else `(team.id, title)` | create or batch-create | reuse | update body/labels/parent/milestone |
 | Relation | `(issueId, relatedIssueId, type)` | create | reuse | n/a |
-| Attachment | `(issueId, url)` | create | reuse | update title drift |
+| Attachment | `(issueId, url)` | create with source metadata | reuse | update title drift |
 
 Every mutation checks `success`, reads back the affected graph, and fails closed
 with recovery guidance when confirmation disagrees. Linear attachment URLs must
 be allowed HTTP(S) URLs; keep local file paths in issue bodies or ledgers.
+Project scans start at 250 issues per page and follow cursor pagination until
+`pageInfo.hasNextPage` is false. If Linear reports that the rich read-back query
+is too complex, the implementation must reduce page size and continue the scan
+rather than silently dropping later pages.
 
 ## Tool Description Checklist
 

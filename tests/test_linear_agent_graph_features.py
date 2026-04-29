@@ -104,6 +104,7 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
                 "ProjectCreate",
                 "IssueLabelCreate",
                 "ProjectMilestoneCreate",
+                "IssueBatchCreate",
                 "IssueCreate",
                 "IssueRelationCreate",
                 "AttachmentCreate",
@@ -129,6 +130,101 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
                 for line in requests.read_text(encoding="utf-8").splitlines()
             ]
             self.assertIn("IssueUpdate", update_operations)
+
+    def test_graph_apply_related_duplicate_and_attachment_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            plan = tmp / "graph.json"
+            plan.write_text(
+                json.dumps(
+                    {
+                        "project": {"name": "Relation Project"},
+                        "labels": ["agent-ready"],
+                        "issues": [
+                            {
+                                "key": "MAS-1",
+                                "title": "Source",
+                                "related": ["MAS-2"],
+                                "duplicates": ["MAS-3"],
+                                "links": [{"title": "Runbook", "url": "https://example.com/runbook"}],
+                            },
+                            {"key": "MAS-2", "title": "Related"},
+                            {"key": "MAS-3", "title": "Duplicate"},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            state = tmp / "linear-state.json"
+            state.write_text("{}", encoding="utf-8")
+            env = {**os.environ, "LINEAR_AGENT_FAKE_STATE": str(state), "LINEAR_AGENT_TEST_MODE": "1"}
+
+            result = subprocess.run(
+                [str(BIN), "graph-apply", "--from", str(plan), "--apply-linear"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(state.read_text(encoding="utf-8"))
+            relation_types = {relation["type"] for relation in payload["relations"]}
+            self.assertEqual(relation_types, {"related", "duplicate"})
+            self.assertEqual(payload["attachments"][0]["metadata"]["source"], "linear-project-planner")
+            self.assertTrue(payload["attachments"][0]["groupBySource"])
+
+    def test_project_readback_paginates_all_issues(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            plan = {
+                "project": {"name": "Paginated Project"},
+                "issues": [
+                    {"key": f"MAS-{index}", "title": f"Issue {index}"}
+                    for index in range(1, 256)
+                ],
+            }
+            plan_path = tmp / "graph.json"
+            plan_path.write_text(json.dumps(plan), encoding="utf-8")
+            state = tmp / "linear-state.json"
+            requests = tmp / "requests.jsonl"
+            state.write_text("{}", encoding="utf-8")
+            env = {
+                **os.environ,
+                "LINEAR_AGENT_FAKE_STATE": str(state),
+                "LINEAR_AGENT_FAKE_REQUESTS": str(requests),
+                "LINEAR_AGENT_TEST_MODE": "1",
+            }
+
+            apply_result = subprocess.run(
+                [str(BIN), "graph-apply", "--from", str(plan_path), "--apply-linear"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+            self.assertEqual(apply_result.returncode, 0, apply_result.stderr)
+            requests.write_text("", encoding="utf-8")
+            readback = subprocess.run(
+                [str(BIN), "graph-readback", "--from", str(plan_path)],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+
+            self.assertEqual(readback.returncode, 0, readback.stderr)
+            operations = [
+                json.loads(line)["operationName"]
+                for line in requests.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertGreaterEqual(operations.count("ProjectReadback"), 2)
 
     def test_graph_plan_rejects_blocked_by_cycles(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
