@@ -8,6 +8,16 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 - Nothing yet.
 
+## 3.3.0 - 2026-04-29
+
+- Added an opt-in expanded mode for long-horizon Linear projects, with a
+  compact `SKILL.md` router, detailed `references/expanded-mode.md` workflow,
+  and reusable expanded-mode templates.
+- Added research-backed design artifacts for software-firm operating models,
+  Context7/OpenAI provenance, dependency mapping, and multi-agent QA.
+- Added evaluator coverage proving expanded mode is additive and baseline mode
+  remains the default.
+
 ## 3.2.0 - 2026-04-28
 
 - Added an explicit safe-parallelism contract requiring repeated checkpoints,

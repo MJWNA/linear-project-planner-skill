@@ -65,6 +65,21 @@ def main() -> int:
         and contains("references/execution-hygiene.md", "Safe Parallelism Checkpoints")
         and contains("references/project-structure.md", "Safe Parallelism Planning")
         and contains("templates/EXECUTION.md", "Safe Parallelism Decisions"),
+        "expanded_mode_additive": exists("references/expanded-mode.md")
+        and contains("SKILL.md", "## Expanded Mode")
+        and contains("SKILL.md", "Baseline mode remains the default")
+        and contains("SKILL.md", "references/expanded-mode.md")
+        and contains("references/expanded-mode.md", "## Mode Gate")
+        and contains("references/expanded-mode.md", "## Baseline Protection")
+        and contains("references/expanded-mode.md", "## Dependency Mapping")
+        and contains("references/expanded-mode.md", "## Multi-Agent Allocation")
+        and contains("references/expanded-mode.md", "Dogfood expanded mode")
+        and exists("templates/expanded-mode/research-dossier.md")
+        and exists("templates/expanded-mode/decision.md")
+        and exists("templates/expanded-mode/dependency-map.md")
+        and exists("templates/expanded-mode/qa-plan.md")
+        and exists("templates/expanded-mode/agent-brief.md")
+        and exists("templates/expanded-mode/handoff.md"),
         "production_sink_gates": exists("templates/production-gates.md")
         and contains("lib/linear_agent/cli.py", "inventory"),
         "documentation": exists("docs/examples/local-skill-audit.md")
