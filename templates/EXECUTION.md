@@ -13,6 +13,7 @@
 - Base branch:
 - Coordinator workspace:
 - Ledger path:
+- Principles surface:
 
 ## Current State
 
@@ -24,6 +25,20 @@
 - Next safest action:
 - Validation mode:
 - Deep auto-research loop:
+- Continuous Issue Discovery:
+
+## Project Principles / Fundamentals
+
+- Principles:
+- Non-negotiables:
+- Quality bar:
+- Decision rules:
+- Anti-goals:
+
+Use this compact section for small baseline projects. If principles need
+sources, approval evidence, amendments, review cadence, or more than one screen,
+promote them to a companion document from `templates/project-principles.md` and
+link it in `Principles surface` above.
 
 Checklist marker legend: `[ ]` pending, `[x]` complete, `[~]` not applicable with a reason. During final reconciliation, do not leave conditional items unchecked if they were intentionally not needed.
 
@@ -75,6 +90,17 @@ Separate git worktrees are required unless the work is read-only.
 - Serial-required issues and reason:
 - Follow-up issues needed before safe parallel execution:
 - Coordinator decisions, integration, Linear state, dependencies, comments, ledger updates, and final verification owner:
+
+## Continuous Issue Discovery Log
+
+Use this for discovered work that changes project shape or may need follow-up.
+Create Linear issues immediately for blockers, correctness issues,
+acceptance-required work, or real dependencies. Proposed candidates require
+coordinator review before becoming non-blocking scope expansion.
+
+| Date | Classification | Why Discovered | Surfaced By | Create / Propose / Log | Blocks / Depends On | Owner Workstream | Acceptance Criteria | Future-Agent Context | Status / Link |
+|---|---|---|---|---|---|---|---|---|---|
+| TBD | Blocker / Dependency / Defect / Research follow-up / Implementation follow-up / Decision required / QA / verification gap / Documentation gap / Scope expansion / Risk / mitigation | TBD | Issue/workstream | TBD | TBD | TBD | TBD | TBD | TBD |
 
 ## Issue Progress
 

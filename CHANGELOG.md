@@ -8,6 +8,23 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 - Nothing yet.
 
+## 3.4.0 - 2026-04-30
+
+- Added a scaled Project Principles / Fundamentals surface for Linear projects,
+  with compact baseline guidance, a full companion-document template,
+  amendment rules, ledger placeholders, expanded-mode links, and evaluator
+  coverage.
+- Added Continuous Issue Discovery as a global planning behavior for normal and
+  expanded mode, including create/propose/log decision rules and discovery
+  classifications for blockers, dependencies, defects, follow-ups, decisions,
+  QA gaps, documentation gaps, scope expansions, and risks.
+- Added compact normal-mode project description and issue body structures, plus
+  expanded-mode charter and rich issue body structures for long-horizon,
+  multi-agent delivery.
+- Added evaluator and fixture coverage for Continuous Issue Discovery, normal
+  planning outputs, expanded planning outputs, and release-gate changelog
+  verification.
+
 ## 3.3.0 - 2026-04-29
 
 - Added an opt-in expanded mode for long-horizon Linear projects, with a

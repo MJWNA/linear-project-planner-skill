@@ -71,6 +71,28 @@ agent role, inputs, source scope, verification method, and links back to the
 owning issue. Do not paste full docs into Linear issue descriptions; link the
 artifact and summarize the decision-relevant part.
 
+## Project Charter Description
+
+Expanded-mode project descriptions should behave like a compact charter. Include
+these fields when relevant:
+
+- project purpose
+- operating mode
+- source of truth
+- companion ledger path
+- local docs root
+- current phase
+- workstream map
+- dependency policy
+- research-to-issue policy
+- Continuous Issue Discovery policy
+- verification policy
+- agent handoff policy
+- coordinator responsibilities
+
+Keep the charter current when the project shape changes. Link large local docs
+instead of pasting them into the project description.
+
 ## Research And Provenance
 
 Run research before implementation when the project depends on external
@@ -92,6 +114,18 @@ database tooling, provider integrations, or user-requested current docs.
 Use official OpenAI/Codex docs when work relies on Skills behavior, MCP,
 hosted tools, tool search, subagents, `agents.max_threads`, sandboxing,
 compaction, structured outputs, reasoning controls, or Codex configuration.
+
+## Project Principles / Fundamentals
+
+Expanded-mode projects should create a first-class companion principles
+document from `templates/project-principles.md`. Seed it from the research
+synthesis and keep it linked from the operating guide, dependency map, QA plan,
+and companion ledger.
+
+The principles document is the stable decision reference for non-negotiables,
+quality bar, tradeoff rules, anti-goals, accepted principles, superseded
+principles, and amendment history. It must not replace Linear tasks, execution
+ledger state, ADRs, QA plans, or dependency maps.
 
 ## Dependency Mapping
 
@@ -125,6 +159,8 @@ Expanded-mode projects should usually include:
 - a dependency-map/parallelism guide when dependency mapping is material
 - milestone gates for mode gate, research, decomposition, implementation,
   verification, dogfood, release, and handoff
+- a project principles/fundamentals guide or companion document when principles
+  are material to sequencing, tradeoffs, or agent behavior
 - parent workstreams organized around outcomes, architecture boundaries, or
   integration zones
 - child issues small enough for one agent to own
@@ -133,6 +169,51 @@ An `agent-ready` issue must include objective, owned scope, non-owned scope,
 inputs, dependencies, expected output, acceptance criteria, verification,
 evidence links, Context7/OpenAI/source requirements when applicable, and human
 review gates when needed.
+
+Expanded-mode issue bodies should include the sections future agents need after
+context loss:
+
+- Objective
+- Background context
+- Why this matters
+- Inputs / required reading
+- Owned scope
+- Non-owned scope
+- Dependencies
+- Blockers
+- Step-by-step working instructions
+- Expected outputs
+- Acceptance criteria
+- Verification requirements
+- Handoff / context recovery notes
+- Follow-up issue candidates
+- Required updates to local docs, ledger, or dependency map
+
+Omit sections that are genuinely not relevant, but do not omit ownership,
+dependencies, acceptance criteria, verification, or handoff notes for
+write-capable or long-running work.
+
+## Continuous Issue Discovery Protocol
+
+Expanded mode uses a formal discovery protocol because the plan is expected to
+evolve. At research, implementation, review, verification, docs, release, and
+handoff checkpoints, classify new work as Blocker, Dependency, Defect, Research
+follow-up, Implementation follow-up, Decision required, QA / verification gap,
+Documentation gap, Scope expansion, or Risk / mitigation.
+
+Create a new issue immediately when the discovery blocks current work, affects
+correctness, is required for acceptance, or creates a real dependency. Link
+formal blockers/dependencies in Linear and update the local dependency map when
+sequencing changes.
+
+For non-blocking expansions, first record an issue candidate with discovery
+reason, surfacing issue/workstream, owner workstream, acceptance criteria,
+verification, and compaction-safe context. The coordinator deduplicates,
+accepts, rejects, or defers the candidate before creating extra scope.
+
+Update the companion ledger and any relevant local docs when discovery changes
+project shape, dependency order, verification gates, agent allocation, release
+readiness, or handoff expectations.
 
 ## Multi-Agent Allocation
 

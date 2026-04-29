@@ -152,6 +152,7 @@ def main() -> int:
     reference_targets = (
         "references/trigger-preservation.md",
         "references/project-structure.md",
+        "references/project-principles.md",
         "references/execution-hygiene.md",
         "references/validation-modes.md",
         "references/expanded-mode.md",
@@ -199,6 +200,7 @@ def main() -> int:
 
     mapped_phrases = (
         "templates/EXECUTION.md",
+        "templates/project-principles.md",
         "scripts/linear-agent",
         "references/command-schemas.md",
         "references/runtime-state.md",
@@ -240,6 +242,142 @@ def main() -> int:
     }
     ok, detail = check_concepts(parallelism_text, safe_parallelism_concepts)
     checks.append(("safe parallelism contract", 15, ok, detail))
+
+    principles_text = " ".join(
+        (
+            skill,
+            project_structure,
+            expanded_mode,
+            ledger_template,
+            read("references/project-principles.md"),
+            read("templates/project-principles.md"),
+        )
+    )
+    project_principles_concepts = {
+        "global principles surface": (
+            "Every project needs a durable principles surface",
+            "Every Linear project gets a principles surface",
+        ),
+        "compact baseline section": (
+            "Small baseline projects",
+            "compact section",
+        ),
+        "promotion threshold": ("Promotion Threshold", "promote to a separate companion"),
+        "artifact boundaries": (
+            "Tasks belong in Linear",
+            "execution state belongs in the ledger",
+            "detailed decisions belong in ADRs",
+        ),
+        "amendment model": ("Proposed", "Accepted", "Superseded"),
+        "template exists": ("templates/project-principles.md",),
+        "baseline remains concise": (
+            "Keep baseline mode concise",
+            "Do not create expanded-mode docs folders",
+        ),
+    }
+    ok, detail = check_concepts(principles_text, project_principles_concepts)
+    checks.append(("project principles surface contract", 15, ok, detail))
+
+    continuous_discovery_front_door = {
+        "named behavior": ("Continuous Issue Discovery",),
+        "plan not sacred": (
+            "original Linear plan as a starting model, not a sacred list",
+            "original Linear plan is not sacred",
+        ),
+        "classification blocker": ("Blocker",),
+        "classification dependency": ("Dependency",),
+        "classification defect": ("Defect",),
+        "classification research follow-up": ("Research follow-up",),
+        "classification implementation follow-up": ("Implementation follow-up",),
+        "classification decision required": ("Decision required",),
+        "classification qa gap": ("QA / verification gap",),
+        "classification documentation gap": ("Documentation gap",),
+        "classification scope expansion": ("Scope expansion",),
+        "classification risk mitigation": ("Risk / mitigation",),
+        "create rule": ("Create a Linear issue immediately",),
+        "propose rule": ("Propose an issue candidate",),
+        "log rule": ("Log it only",),
+        "created issue context": (
+            "why the work was discovered",
+            "which issue or workstream surfaced it",
+            "future agents need to know",
+        ),
+    }
+    ok, detail = check_concepts(skill, continuous_discovery_front_door)
+    checks.append(("continuous issue discovery front door", 10, ok, detail))
+
+    normal_discovery_concepts = {
+        "normal lightweight": ("In normal mode, keep discovery lightweight",),
+        "normal concise candidates": ("concise candidates or issues",),
+        "normal blocker links": ("blocker/dependency links",),
+    }
+    ok, detail = check_concepts(project_structure, normal_discovery_concepts)
+    checks.append(("normal-mode discovery placement", 10, ok, detail))
+
+    expanded_discovery_concepts = {
+        "expanded formal": (
+            "formal discovery protocol",
+            "local dependency map",
+            "coordinator deduplicates",
+        ),
+        "expanded docs updates": ("Update the companion ledger",),
+        "expanded candidate context": ("surfacing issue/workstream",),
+    }
+    ok, detail = check_concepts(expanded_mode, expanded_discovery_concepts)
+    checks.append(("expanded-mode discovery protocol", 10, ok, detail))
+
+    ledger_discovery_concepts = {
+        "ledger discovery log": ("## Continuous Issue Discovery Log",),
+        "ledger why discovered": ("Why Discovered",),
+        "ledger future-agent context": ("Future-Agent Context",),
+    }
+    ok, detail = check_concepts(ledger_template, ledger_discovery_concepts)
+    checks.append(("ledger discovery log captures recovery context", 10, ok, detail))
+
+    structured_normal_concepts = {
+        "normal project description": ("Normal-Mode Project Description",),
+        "normal project goal": ("Project goal",),
+        "normal source of truth": ("Source of truth",),
+        "normal handoff recovery": ("Handoff/context recovery expectations",),
+        "normal issue body": ("Normal-Mode Issue Body",),
+        "normal dependencies blockers": ("Dependencies / Blockers",),
+        "normal future-agent notes": ("Notes For Future Agents",),
+        "normal remains compact": (
+            "Keep normal-mode issues concise",
+            "not bureaucracy",
+        ),
+    }
+    ok, detail = check_concepts(project_structure, structured_normal_concepts)
+    checks.append(("normal-mode structured output contract", 10, ok, detail))
+
+    structured_expanded_concepts = {
+        "expanded project charter": ("Project Charter Description",),
+        "expanded ledger path": ("companion ledger path",),
+        "expanded coordinator responsibilities": ("coordinator responsibilities",),
+        "expanded issue body": ("Step-by-step working instructions",),
+        "expanded follow-up candidates": ("Follow-up issue candidates",),
+        "expanded required updates": (
+            "Required updates to local docs, ledger, or dependency map",
+        ),
+        "expanded remains richer": (
+            "Expanded-mode issue bodies should include",
+            "future agents need after context loss",
+        ),
+    }
+    ok, detail = check_concepts(expanded_mode, structured_expanded_concepts)
+    checks.append(("expanded-mode structured output contract", 10, ok, detail))
+
+    fixture_output_concepts = {
+        "normal fixture": ("## Normal-Mode Project Description",),
+        "normal issue fixture": ("## Normal-Mode Child Issue",),
+        "expanded charter fixture": ("## Expanded-Mode Project Charter",),
+        "expanded issue fixture": ("## Expanded-Mode Issue Body",),
+        "discovery fixture": ("## Continuous Discovery Issue Candidate",),
+    }
+    ok, detail = check_concepts(
+        read("tests/fixtures/linear_issue_templates.md"), fixture_output_concepts
+    )
+    checks.append(("fixture examples cover output modes", 10, ok, detail))
 
     expanded_mode_concepts = {
         "opt-in mode": ("Use expanded mode only", "Load only after an expanded-mode trigger"),

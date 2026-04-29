@@ -29,6 +29,8 @@ future agent:
 - what verification proves completion
 - what business outputs must not change
 - where durable cross-session execution memory lives
+- what project principles or fundamentals should guide repeated decisions
+- how newly discovered work becomes issues, candidates, or durable notes
 
 ## Quick Path
 
@@ -39,12 +41,15 @@ future agent:
    inside the Linear plan when the user is asking for a Linear project. Minimal
    repo inspection needed to shape the plan is allowed before issue creation;
    substantive findings belong in tracked issues.
-4. Run a safe parallelism checkpoint after project creation or read-back, then
+4. Apply Continuous Issue Discovery throughout planning and execution: create
+   required issues, propose useful non-blocking candidates, and log context-only
+   findings.
+5. Run a safe parallelism checkpoint after project creation or read-back, then
    claim work with `linear-agent start`; use separate branches and worktrees for
    independent write-capable agents.
-5. Verify every issue before `linear-agent complete`, then mirror the Linear
+6. Verify every issue before `linear-agent complete`, then mirror the Linear
    status/comment and read it back.
-6. Run final verification, reconcile Linear, and finalize only with explicit
+7. Run final verification, reconcile Linear, and finalize only with explicit
    evidence.
 
 ## Expanded Mode
@@ -70,6 +75,8 @@ Load deeper references only when the current task needs them:
 - `references/project-structure.md`: milestones, labels, parent issues, child
   issue template, safe parallelism planning, sparse link graph, and
   research-as-planned-work template.
+- `references/project-principles.md`: scaled Project Principles / Fundamentals
+  surfaces, compact baseline sections, promotion rules, and amendments.
 - `references/execution-hygiene.md`: companion ledger, `linear-agent`,
   issue-state hygiene, safe parallelism checkpoints, worktrees, completion
   comments, and finalization.
@@ -88,6 +95,8 @@ Load deeper references only when the current task needs them:
 - `references/repository-hardening.md`: CI, release, CodeQL, branch/ruleset, and
   solo-maintainer hardening policy.
 - `templates/EXECUTION.md`: companion ledger shape and checklist semantics.
+- `templates/project-principles.md`: full companion principles document for
+  larger, ambiguous, or expanded-mode projects.
 - `templates/production-gates.md`: production and sink/output inventory gates.
 - `scripts/linear-agent`: local transition wrapper, direct Linear mode,
   reconciliation, and finalization guards.
@@ -110,9 +119,19 @@ Before creating issues:
    list.
 6. Create a companion execution ledger before or alongside Linear issue
    creation.
-7. Build a sparse link graph across tasks, docs, source artifacts, and
+7. Capture a Project Principles / Fundamentals surface; keep it compact for
+   small baseline projects and promote it only when the project needs a
+   separate durable decision reference.
+8. Add a compact project description with goal, source of truth, scope,
+   non-scope, workstreams, dependency/blocker policy, Continuous Issue
+   Discovery rule, verification expectations, and handoff/context recovery
+   notes when relevant.
+9. Use issue bodies that survive context loss: objective, context, scope,
+   dependencies/blockers, acceptance criteria, verification, and future-agent
+   notes.
+10. Build a sparse link graph across tasks, docs, source artifacts, and
    verification evidence.
-8. Classify validation depth: standard by default; deep auto-research only when
+11. Classify validation depth: standard by default; deep auto-research only when
    explicitly requested, approved, or clearly triggered.
 
 ## Required Guide Issues
@@ -132,6 +151,39 @@ Include baseline local checks, domain-specific checks, production/deployment
 checks when relevant, browser/UI checks when relevant, database migration checks
 when relevant, rollback/post-deploy observation requirements, binary/frozen
 evaluators, validation mode, and final read-back requirements.
+
+## Continuous Issue Discovery
+
+Treat the original Linear plan as a starting model, not a sacred list. During
+research, implementation, testing, review, documentation, handoff, release, and
+coordination, classify newly discovered work as one of:
+
+- Blocker
+- Dependency
+- Defect
+- Research follow-up
+- Implementation follow-up
+- Decision required
+- QA / verification gap
+- Documentation gap
+- Scope expansion
+- Risk / mitigation
+
+Create a Linear issue immediately when the work blocks current execution,
+affects correctness, is required for acceptance, or creates a real dependency.
+Propose an issue candidate when it may be useful but needs coordinator review.
+Log it only when it is contextually useful but not yet actionable.
+
+Created and proposed issues must include why the work was discovered, which
+issue or workstream surfaced it, whether it blocks or depends on anything, which
+phase or workstream owns it, what acceptance criteria prove completion, and what
+future agents need to know after context clears.
+
+Normal mode keeps this lightweight: concise issues or candidates, useful
+blocker/dependency links, and no ceremony for small projects. Expanded mode uses
+a formal discovery protocol with dependency-aware issue creation, ledger/local
+docs updates when project shape changes, rich issue context, and coordinator
+review/deduplication before non-blocking scope expansions are created.
 
 ## Sparse Link Graph
 

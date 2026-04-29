@@ -36,6 +36,32 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
 - `json`: emit stable machine-readable output.
 - `from`: path to a graph plan file for graph and allocation commands.
 
+## Planning Output Modes
+
+Normal-mode planning output should stay compact but recoverable:
+
+- project descriptions carry goal, source of truth, scope, non-scope,
+  workstreams, dependency/blocker policy, Continuous Issue Discovery,
+  verification, and handoff fields when relevant;
+- issue bodies carry objective, context, scope, dependencies/blockers,
+  acceptance criteria, verification, and future-agent notes.
+
+Expanded-mode planning output should behave like a delivery charter:
+
+- project descriptions carry operating mode, companion ledger path, local docs
+  root, phase, workstream map, dependency policy, research-to-issue policy,
+  Continuous Issue Discovery policy, verification policy, handoff policy, and
+  coordinator responsibilities;
+- issue bodies carry background, why it matters, inputs, owned/non-owned scope,
+  dependencies, blockers, working instructions, expected outputs, acceptance
+  criteria, verification, handoff notes, follow-up candidates, and required
+  ledger/local-doc/dependency-map updates where relevant.
+
+Both modes support emergent work capture. Created or proposed issue records
+should preserve discovery reason, surfacing issue/workstream, relationship to
+blockers/dependencies, owner phase/workstream, acceptance criteria, and
+compaction-safe notes.
+
 ## Safety Contract
 
 - Default mode is dry-run for Linear side effects.
