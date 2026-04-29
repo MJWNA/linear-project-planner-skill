@@ -103,9 +103,11 @@ The skill keeps the front-door instructions compact and moves deeper contracts i
 - `scripts/linear-agent`: shell CLI for ledger transitions, direct Linear mode, reconciliation, and finalization.
 - `references/command-schemas.md`: proposed `linear_project.*` structured tool contract.
 - `references/runtime-state.md`: model/runtime and Responses API state guidance.
+- `references/expanded-mode.md`: opt-in long-horizon workflow for deep research, local docs, dependency maps, provenance, safe multi-agent allocation, dogfood, and baseline contamination safeguards.
 - `references/operator-cheatsheet.md`: one-page operator path and minimal safe issue set.
 - `references/repository-hardening.md`: CI, release, CodeQL, branch/ruleset, and solo-maintainer hardening policy.
 - `templates/production-gates.md`: reusable production and sink inventory gates for common project types.
+- `templates/expanded-mode/`: reusable research dossier, decision, dependency map, QA plan, agent brief, and handoff templates for expanded-mode projects.
 - `docs/claude-portability.md`: Codex-first and Claude-compatible runtime positioning.
 - `docs/manual-linear-smoke.md`: manual live Linear smoke-test release gate pattern.
 - `docs/examples/`: worked examples for local audits, production hardening, and parallel remediation.
@@ -210,6 +212,14 @@ MAS-228: Document the parallel-agent operating model in README.md
 ```
 
 Those two issues can run in parallel because each agent writes a different file and neither issue depends on the other's implementation. If both issues needed to edit `SKILL.md`, the coordinator would either split the ownership by section with extra care or make the work serial.
+
+### Expanded Mode
+
+Expanded mode is an opt-in path for long-horizon projects that need more than the baseline Linear planning contract. Use it when the user explicitly asks for expanded mode, detailed multi-phase planning, deep research first, dependency mapping, local project docs, software-firm-grade planning, multi-team delivery, or heavy safe parallel-agent coordination.
+
+Baseline mode remains the default for ordinary Linear planning, execution, audits, remediation, companion ledgers, dependencies, safe-parallelism checkpoints, and verification gates. Expanded mode adds a stricter mode gate, baseline/no-contamination snapshot, local docs workspace, source provenance rules, dependency map, agent allocation table, planned QA passes, dogfood, and release or handoff gate.
+
+The detailed workflow lives in [references/expanded-mode.md](references/expanded-mode.md). Reusable artifacts live under [templates/expanded-mode/](templates/expanded-mode/).
 
 ### 3. Execute With `linear-agent`
 

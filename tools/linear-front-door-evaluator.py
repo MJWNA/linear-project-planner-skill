@@ -85,6 +85,7 @@ def main() -> int:
     trigger_contract = read("references/trigger-preservation.md")
     execution_hygiene = read("references/execution-hygiene.md")
     project_structure = read("references/project-structure.md")
+    expanded_mode = read("references/expanded-mode.md")
     ledger_template = read("templates/EXECUTION.md")
     fm = frontmatter(skill)
     front_door_text = section_before(skill, "## First Pass")
@@ -153,6 +154,7 @@ def main() -> int:
         "references/project-structure.md",
         "references/execution-hygiene.md",
         "references/validation-modes.md",
+        "references/expanded-mode.md",
     )
     ok, detail = contains_all("SKILL.md", reference_targets)
     checks.append(("reference map links deeper refs", 10, ok, detail))
@@ -238,6 +240,38 @@ def main() -> int:
     }
     ok, detail = check_concepts(parallelism_text, safe_parallelism_concepts)
     checks.append(("safe parallelism contract", 15, ok, detail))
+
+    expanded_mode_concepts = {
+        "opt-in mode": ("Use expanded mode only", "Load only after an expanded-mode trigger"),
+        "baseline default": ("Baseline mode remains the default",),
+        "trigger phrases": ("long-horizon planning", "deep research first", "dependency mapping"),
+        "non-trigger boundary": ("ordinary Linear planning", "ordinary baseline projects"),
+        "expanded reference": ("references/expanded-mode.md",),
+        "local docs": ("local project docs", "docs/expanded-mode"),
+        "provenance": ("Context7", "OpenAI/Codex"),
+        "dependency map": ("Dependency Mapping", "serial-hard", "parallel-safe"),
+        "multi-agent allocation": ("Multi-Agent Allocation", "owned write scope", "non-owned scope"),
+        "dogfood and baseline verification": ("Dogfood expanded mode", "baseline preservation"),
+    }
+    ok, detail = check_concepts(skill + expanded_mode, expanded_mode_concepts)
+    checks.append(("expanded mode additive contract", 15, ok, detail))
+
+    expanded_templates = (
+        "templates/expanded-mode/research-dossier.md",
+        "templates/expanded-mode/decision.md",
+        "templates/expanded-mode/dependency-map.md",
+        "templates/expanded-mode/qa-plan.md",
+        "templates/expanded-mode/agent-brief.md",
+        "templates/expanded-mode/handoff.md",
+    )
+    checks.append(
+        (
+            "expanded mode templates exist",
+            10,
+            all((ROOT / path).exists() for path in expanded_templates),
+            "missing expanded-mode templates",
+        )
+    )
 
     score = 0
     max_score = sum(points for _, points, _, _ in checks)

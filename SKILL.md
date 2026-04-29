@@ -47,6 +47,21 @@ future agent:
 6. Run final verification, reconcile Linear, and finalize only with explicit
    evidence.
 
+## Expanded Mode
+
+Use expanded mode only when the user explicitly asks for expanded mode,
+long-horizon planning, detailed multi-phase planning, deep research first,
+dependency mapping, local project docs or references, software-firm-grade
+planning, multi-team delivery, or heavy safe parallel-agent coordination.
+
+Baseline mode remains the default for ordinary Linear planning, execution,
+audits, remediation, companion ledgers, dependencies, safe-parallelism
+checkpoints, and verification gates. Do not create expanded-mode docs folders,
+research dossiers, or provenance policies for ordinary baseline projects.
+
+When expanded mode is triggered, load `references/expanded-mode.md` after the
+normal local project rules and before creating the project graph.
+
 ## Reference Map
 
 Load deeper references only when the current task needs them:
@@ -66,6 +81,10 @@ Load deeper references only when the current task needs them:
   contract for future MCP/function-tool layers.
 - `references/runtime-state.md`: model/runtime guidance, Responses API state
   continuity, and compaction recovery.
+- `references/expanded-mode.md`: opt-in long-horizon planning workflow for deep
+  research, local docs, dependency maps, provenance, multi-agent allocation,
+  synthesis gates, dogfood, and baseline contamination safeguards. Load only
+  after an expanded-mode trigger is present.
 - `references/repository-hardening.md`: CI, release, CodeQL, branch/ruleset, and
   solo-maintainer hardening policy.
 - `templates/EXECUTION.md`: companion ledger shape and checklist semantics.
