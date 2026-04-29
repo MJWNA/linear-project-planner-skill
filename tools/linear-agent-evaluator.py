@@ -102,7 +102,7 @@ def main() -> int:
             "docs explain direct mode",
             10,
             contains("README.md", "--apply-linear")
-            and contains("README.md", "SCORE 130/130")
+            and contains("README.md", "SCORE 170/170")
             and contains("SKILL.md", "LINEAR_API_KEY")
             and contains("README.md", "linear-agent reconcile")
             and contains("lib/linear_agent/cli.py", "finalize refuses unfinished issue rows")
@@ -159,6 +159,50 @@ def main() -> int:
             "missing issue template or final comment fixtures",
         )
     )
+    checks.append(
+        (
+            "live graph mutations",
+            15,
+            contains("lib/linear_agent/graphql.py", "ProjectCreate")
+            and contains("lib/linear_agent/graphql.py", "IssueLabelCreate")
+            and contains("lib/linear_agent/graphql.py", "ProjectMilestoneCreate")
+            and contains("lib/linear_agent/graphql.py", "IssueRelationCreate")
+            and contains("lib/linear_agent/graphql.py", "AttachmentCreate")
+            and contains("lib/linear_agent/cli.py", "Graph applied to Linear and read-back verified"),
+            "missing direct graph mutation operations",
+        )
+    )
+    checks.append(
+        (
+            "continuous discovery cli",
+            10,
+            contains("lib/linear_agent/cli.py", "cmd_discover")
+            and contains("lib/linear_agent/cli.py", "cmd_promote")
+            and contains("lib/linear_agent/cli.py", "Continuous Discovery Issue Candidate"),
+            "missing discover/promote command implementation",
+        )
+    )
+    checks.append(
+        (
+            "live api documentation",
+            10,
+            contains("README.md", "Linear MCP is no longer required")
+            and contains("SKILL.md", "## Live API Mode")
+            and contains("references/command-schemas.md", "Live API Mode")
+            and contains("docs/research/direct-linear-graphql-adr.md", "Direct Linear GraphQL"),
+            "missing direct API docs or ADR",
+        )
+    )
+    checks.append(
+        (
+            "scheduled live smoke",
+            5,
+            contains(".github/workflows/live-linear-smoke.yml", "schedule:")
+            and contains(".github/workflows/live-linear-smoke.yml", "linear-agent smoke")
+            and contains("lib/linear_agent/graphql.py", "ProjectArchive"),
+            "missing scheduled graph smoke workflow",
+        )
+    )
 
     score = 0
     for name, points, ok, detail in checks:
@@ -170,8 +214,8 @@ def main() -> int:
             if detail:
                 print(detail.rstrip())
 
-    print(f"SCORE {score}/130")
-    return 0 if score == 130 else 1
+    print(f"SCORE {score}/170")
+    return 0 if score == 170 else 1
 
 
 if __name__ == "__main__":

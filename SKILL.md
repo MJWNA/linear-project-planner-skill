@@ -230,8 +230,10 @@ statuses, or dependencies. Keep checklist state honest with `[ ]`, `[x]`, and
 
 ## Linear Transition Wrapper
 
-Use `linear-agent` for execution-state transitions when available, then perform
-and read-back verify the printed Linear MCP actions.
+Use `linear-agent` for execution-state transitions and graph creation when
+available. With credentials and `--apply-linear`, the CLI writes directly to
+Linear's GraphQL API and verifies read-back before confirming success. Without
+credentials, keep using dry-run output as the manual fallback plan.
 
 Common commands:
 
@@ -249,6 +251,36 @@ Direct Linear mode requires `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` and
 `--apply-linear`. Endpoint overrides are validated to `https://api.linear.app`
 unless explicitly allowed for trusted testing. Fake transport is test-only and
 requires `LINEAR_AGENT_TEST_MODE=1`.
+
+## Live API Mode
+
+`linear-agent graph-apply --apply-linear --from <plan>.json` creates and
+updates Linear project graphs directly through `https://api.linear.app/graphql`.
+Linear MCP is no longer required for graph creation when credentials are
+available.
+
+Supported live operations:
+
+- `projectCreate` / `projectUpdate`
+- `issueLabelCreate` / `issueLabelUpdate`
+- `projectMilestoneCreate` / `projectMilestoneUpdate`
+- `issueCreate` / `issueUpdate`
+- `issueRelationCreate`
+- `attachmentCreate` / `attachmentUpdate`
+- project issue read-back for `graph-readback` and `reconcile --project`
+
+Idempotence keys:
+
+- Project: `(team.id, name)`
+- Milestone: `(project.id, name)`
+- Label: `(team.id, name)`
+- Issue: explicit `identifier` when supplied, otherwise `(team.id, title)`
+- Relation: `(issueId, relatedIssueId, type)`
+- Attachment: `(issueId, url)`
+
+Every live mutation must check Linear's `success` flag, read the affected graph
+back, and fail closed if confirmation disagrees. Default mode remains dry-run;
+mutations require `--apply-linear` or `LINEAR_AGENT_APPLY=1`.
 
 ## Execution State Hygiene
 

@@ -14,7 +14,8 @@ class GraphPlanError(ValueError):
 @dataclass(frozen=True)
 class GraphIssue:
     key: str
-    title: str
+    identifier: str = ""
+    title: str = ""
     description: str = ""
     parent: str = ""
     milestone: str = ""
@@ -40,6 +41,7 @@ def load_graph_plan(path: Path) -> GraphPlan:
     issues = [
         GraphIssue(
             key=str(item.get("key") or item.get("id") or ""),
+            identifier=str(item.get("identifier") or ""),
             title=str(item.get("title") or ""),
             description=str(item.get("description") or item.get("body") or ""),
             parent=str(item.get("parent") or item.get("parentKey") or ""),

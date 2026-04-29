@@ -1,12 +1,14 @@
 # Linear Project Command Schemas
 
-This reference describes the stable command contract behind the `linear-agent`
-CLI and a future structured tool or MCP surface. Keep the shell CLI compatible;
-move implementation behind these contracts in small, tested steps.
+This reference describes the stable command contract behind the implemented
+`linear-agent` CLI and any future structured tool or MCP surface. Keep the
+shell CLI compatible; move implementation behind these contracts in small,
+tested steps.
 
 ## Namespace
 
-Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
+Use `linear_project.*` for function-tool, MCP, or tool-search metadata. The
+shell CLI is the implemented reference surface.
 
 | Tool | Purpose | Side effects |
 |---|---|---|
@@ -24,6 +26,8 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
 | `linear_project.allocate` | Convert graph and write scopes into parallel agent lanes. | Writes ledger allocation rows only when requested. |
 | `linear_project.inventory` | Draft production/sink gate matrix from a repo scan. | Reads local files only. |
 | `linear_project.smoke` | Run dry-run or secret-gated live Linear smoke checks. | Writes Linear only with explicit apply mode and credentials. |
+| `linear_project.discover` | Capture Continuous Issue Discovery as a proposed ledger row or live Linear issue. | Writes ledger; writes Linear only with `--create` and credentials. |
+| `linear_project.promote` | Promote a proposed Continuous Issue Discovery row into a live Linear issue. | Writes Linear and records the created identifier in the ledger. |
 
 ## Shared Parameters
 
@@ -74,7 +78,7 @@ compaction-safe notes.
 - `graph-apply` must be idempotent and dry-run by default.
 - `graph-readback` reports drift without mutating unless paired with explicit apply.
 - `allocate` refuses or reports overlapping write sets before dispatch.
-- `smoke` never runs on normal PRs or forks; live mode is manual and secret-gated.
+- `smoke` never runs on normal PRs or forks; live mode is scheduled/manual and secret-gated.
 
 ## Stable Exit Codes
 
@@ -115,6 +119,35 @@ compaction-safe notes.
 ```
 
 The graph is applied in phases: validate, dry-run, apply, read-back, then repair/report. Existing objects are matched by stable keys before creating anything new. The local fake transport preserves and verifies issue descriptions, milestone assignment, and links so dogfood tests can prove issue actionability instead of only proving title/dependency shape.
+
+## Live API Mode
+
+`graph-apply --apply-linear` mutates `https://api.linear.app/graphql` directly
+when `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` is present. It applies the graph
+in this order:
+
+1. Project
+2. Labels
+3. Milestones
+4. Parent issues
+5. Child issues
+6. Relations
+7. Attachments
+
+Idempotence keys:
+
+| Entity | Lookup key | On create | On match | On drift |
+|---|---|---|---|---|
+| Project | `(team.id, name)` | create | reuse | update changed fields |
+| Milestone | `(project.id, name)` | create | reuse | update changed fields |
+| Label | `(team.id, name)` | create | reuse | update explicit color/description drift |
+| Issue | explicit `identifier`; else `(team.id, title)` | create | reuse | update body/labels/parent/milestone |
+| Relation | `(issueId, relatedIssueId, type)` | create | reuse | n/a |
+| Attachment | `(issueId, url)` | create | reuse | update title drift |
+
+Every mutation checks `success`, reads back the affected graph, and fails closed
+with recovery guidance when confirmation disagrees. Linear attachment URLs must
+be allowed HTTP(S) URLs; keep local file paths in issue bodies or ledgers.
 
 ## Tool Description Checklist
 

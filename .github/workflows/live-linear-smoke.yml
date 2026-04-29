@@ -4,31 +4,36 @@ permissions:
   contents: read
 
 on:
+  schedule:
+    - cron: "43 2 * * 2"
   workflow_dispatch:
     inputs:
       project:
-        description: Disposable Linear project ID or key
-        required: true
+        description: Disposable Linear project name
+        required: false
+        default: "Linear Agent Disposable Smoke"
       apply:
         description: Type apply-linear to allow the smoke apply gate
-        required: true
+        required: false
+        default: "dry-run"
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    if: github.event.inputs.apply == 'apply-linear'
+    if: github.event_name == 'schedule' || github.event.inputs.apply == 'apply-linear'
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Dry-run smoke
-        run: scripts/linear-agent smoke --project "${{ inputs.project }}"
+        run: scripts/linear-agent graph-plan --from tests/fixtures/linear_graph_plan.json
 
-      - name: Apply-gated smoke
+      - name: Apply disposable graph
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_AGENT_SMOKE_PROJECT: ${{ github.event.inputs.project || 'Linear Agent Disposable Smoke' }}
         run: |
           set -euo pipefail
           test -n "${LINEAR_API_KEY:-}"
-          scripts/linear-agent smoke --project "${{ inputs.project }}" --apply-linear
+          scripts/linear-agent smoke --project "$LINEAR_AGENT_SMOKE_PROJECT" --apply-linear --json

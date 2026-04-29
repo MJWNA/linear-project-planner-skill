@@ -128,7 +128,7 @@ def main() -> int:
         and (contains("README.md", "Windows") or contains("README.md", "WSL"))
         and contains("README.md", "Codex-first and Claude-compatible"),
         "manual_linear_smoke_docs": exists("docs/manual-linear-smoke.md")
-        and contains("README.md", "Manual Linear Smoke Tests"),
+        and contains("README.md", "Live Linear Smoke Tests"),
     }
     payload = {
         "score": sum(1 for ok in checks.values() if ok),
