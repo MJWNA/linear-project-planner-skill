@@ -8,6 +8,19 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 - Nothing yet.
 
+## 3.5.0 - 2026-04-30
+
+- Added a live dogfood evaluator with small, medium, large, expanded-mode, and
+  continuous-discovery sandbox plans.
+- Added source material checkpoint guidance and companion-ledger tracking for
+  kickoff, planning, issue creation, implementation, parallel delegation, scope
+  changes, verification, handoff, and closeout.
+- Extended graph plan fake apply/read-back to preserve and verify issue
+  descriptions, milestones, and links so dogfood tests validate agent-ready
+  issue quality.
+- Added dogfood fixture coverage and expanded audit coverage for source
+  checkpoint discipline.
+
 ## 3.4.0 - 2026-04-30
 
 - Added a scaled Project Principles / Fundamentals surface for Linear projects,

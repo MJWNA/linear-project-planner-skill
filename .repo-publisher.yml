@@ -40,7 +40,7 @@ hardening:
   scorecard: false
 release:
   strategy: manual
-  current_tag: "v2.1.2"
+  current_tag: "v3.5.0"
 skips:
   codeql: "Shell/Markdown skill repo; CI covers syntax, YAML, and regression tests."
   scorecard: "Deferred until the repo is intended for broader community contribution."
