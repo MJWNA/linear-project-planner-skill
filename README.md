@@ -97,9 +97,11 @@ The skill keeps the front-door instructions compact and moves deeper contracts i
 - `SKILL.md`: project design and execution contract.
 - `references/trigger-preservation.md`: trigger-safe front-door contract.
 - `references/project-structure.md`: milestones, labels, parent issues, child issue template, sparse link graph, and research-as-planned-work template.
+- `references/project-principles.md`: scaled Project Principles / Fundamentals surfaces for baseline and expanded projects.
 - `references/execution-hygiene.md`: companion ledger, `linear-agent`, issue-state hygiene, worktrees, completion comments, and finalization.
 - `references/validation-modes.md`: standard validation, optional deep auto-research validation, production gates, and sink/output preservation.
 - `templates/EXECUTION.md`: living ledger template.
+- `templates/project-principles.md`: full companion principles document for larger, ambiguous, or expanded-mode projects.
 - `scripts/linear-agent`: shell CLI for ledger transitions, direct Linear mode, reconciliation, and finalization.
 - `references/command-schemas.md`: proposed `linear_project.*` structured tool contract.
 - `references/runtime-state.md`: model/runtime and Responses API state guidance.
@@ -123,6 +125,7 @@ When asked to create or execute a Linear project, the agent reads this skill and
 - Decide which workstreams can run in parallel and which must be serial.
 - Add verification gates before risky implementation work.
 - Create or update the companion ledger.
+- Add a compact project description with goal, source of truth, scope, non-scope, workstreams, dependency policy, discovery rule, verification, and handoff notes when relevant.
 
 ### 2. Create Agent-Ready Linear Issues
 
@@ -147,8 +150,19 @@ Each child issue should explain:
 - High-signal reference links.
 - Parallel-safety notes.
 - Known overlap files or modules.
+- Notes for future agents after context clears.
 
 The result is a backlog that an agent can actually execute without needing to rediscover the whole project.
+
+Normal mode keeps issue bodies compact: Objective, Context, Scope, Dependencies / blockers, Acceptance criteria, Verification, and Notes for future agents. The goal is enough structure for handoff and context recovery, not expanded-mode ceremony.
+
+### Continuous Issue Discovery
+
+The initial Linear plan is a working model, not a sacred list. During research, implementation, testing, review, documentation, release, and handoff, agents classify discovered work as Blocker, Dependency, Defect, Research follow-up, Implementation follow-up, Decision required, QA / verification gap, Documentation gap, Scope expansion, or Risk / mitigation.
+
+Create a new issue immediately when the discovery blocks current work, affects correctness, is required for acceptance, or creates a real dependency. Propose an issue candidate when the work may be useful but needs coordinator review. Log context-only observations when they are not actionable yet.
+
+Created or proposed issues should explain why they were discovered, which issue or workstream surfaced them, whether they block or depend on anything, which phase/workstream owns them, what acceptance criteria prove completion, and what a future agent needs to know after context compaction.
 
 ### Sparse Link Graph
 
@@ -218,6 +232,10 @@ Those two issues can run in parallel because each agent writes a different file 
 Expanded mode is an opt-in path for long-horizon projects that need more than the baseline Linear planning contract. Use it when the user explicitly asks for expanded mode, detailed multi-phase planning, deep research first, dependency mapping, local project docs, software-firm-grade planning, multi-team delivery, or heavy safe parallel-agent coordination.
 
 Baseline mode remains the default for ordinary Linear planning, execution, audits, remediation, companion ledgers, dependencies, safe-parallelism checkpoints, and verification gates. Expanded mode adds a stricter mode gate, baseline/no-contamination snapshot, local docs workspace, source provenance rules, dependency map, agent allocation table, planned QA passes, dogfood, and release or handoff gate.
+
+Expanded-mode project descriptions behave like charters: project purpose, operating mode, source of truth, companion ledger path, local docs root, current phase, workstream map, dependency policy, research-to-issue policy, Continuous Issue Discovery policy, verification policy, agent handoff policy, and coordinator responsibilities.
+
+Expanded-mode issues are richer than normal-mode issues. They should include objective, background context, why the work matters, inputs, owned and non-owned scope, dependencies, blockers, step-by-step working instructions, expected outputs, acceptance criteria, verification requirements, handoff/context recovery notes, follow-up issue candidates, and required updates to local docs, the ledger, or dependency map when relevant.
 
 The detailed workflow lives in [references/expanded-mode.md](references/expanded-mode.md). Reusable artifacts live under [templates/expanded-mode/](templates/expanded-mode/).
 

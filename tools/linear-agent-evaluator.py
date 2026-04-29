@@ -146,6 +146,11 @@ def main() -> int:
             "agent output fixture coverage",
             10,
             contains("tests/fixtures/linear_issue_templates.md", "## Final Completion Comment")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Normal-Mode Project Description")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Normal-Mode Child Issue")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Expanded-Mode Project Charter")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Expanded-Mode Issue Body")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Continuous Discovery Issue Candidate")
             and contains("tests/fixtures/linear_issue_templates.md", "Standard labels")
             and contains("tests/fixtures/linear_issue_templates.md", "Dependencies")
             and contains("tests/fixtures/linear_issue_templates.md", "Sparse links")

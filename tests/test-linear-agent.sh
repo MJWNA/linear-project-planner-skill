@@ -40,6 +40,11 @@ assert_contains "$SKILL_DIR/SKILL.md" "references/trigger-preservation.md"
 assert_contains "$SKILL_DIR/SKILL.md" "## Expanded Mode"
 assert_contains "$SKILL_DIR/SKILL.md" "Baseline mode remains the default"
 assert_contains "$SKILL_DIR/SKILL.md" "references/expanded-mode.md"
+assert_contains "$SKILL_DIR/SKILL.md" "references/project-principles.md"
+assert_contains "$SKILL_DIR/SKILL.md" "what project principles or fundamentals should guide repeated decisions"
+assert_contains "$SKILL_DIR/SKILL.md" "## Continuous Issue Discovery"
+assert_contains "$SKILL_DIR/SKILL.md" "Create a Linear issue immediately"
+assert_contains "$SKILL_DIR/SKILL.md" "Propose an issue candidate"
 assert_contains "$SKILL_DIR/SKILL.md" "research, source review, audits, and exploratory discovery"
 assert_contains "$SKILL_DIR/SKILL.md" "## Sparse Link Graph"
 assert_contains "$SKILL_DIR/SKILL.md" "links should compress context, not clutter tasks"
@@ -55,13 +60,97 @@ assert_contains "$SKILL_DIR/README.md" "Links should compress context, not clutt
 assert_contains "$SKILL_DIR/README.md" "### Trigger-Safe Progressive Disclosure"
 assert_contains "$SKILL_DIR/README.md" "### Expanded Mode"
 assert_contains "$SKILL_DIR/README.md" "### Manual Linear Smoke Tests"
+assert_contains "$SKILL_DIR/README.md" "### Continuous Issue Discovery"
 assert_contains "$SKILL_DIR/references/expanded-mode.md" "## Mode Gate"
 assert_contains "$SKILL_DIR/references/expanded-mode.md" "## Multi-Agent Allocation"
+assert_contains "$SKILL_DIR/references/expanded-mode.md" "## Continuous Issue Discovery Protocol"
+assert_contains "$SKILL_DIR/references/project-structure.md" "## Normal-Mode Project Description"
+assert_contains "$SKILL_DIR/references/project-structure.md" "## Normal-Mode Issue Body"
+assert_contains "$SKILL_DIR/references/project-structure.md" "## Continuous Issue Discovery"
+assert_contains "$SKILL_DIR/references/project-principles.md" "Every Linear project gets a principles surface"
+assert_contains "$SKILL_DIR/templates/project-principles.md" "## Accepted Principles"
+assert_contains "$SKILL_DIR/tests/fixtures/linear_issue_templates.md" "## Continuous Discovery Issue Candidate"
 assert_contains "$SKILL_DIR/templates/expanded-mode/research-dossier.md" "## Source Scope"
 assert_contains "$SKILL_DIR/templates/expanded-mode/dependency-map.md" "## Dependency Edges"
 assert_contains "$SKILL_DIR/templates/expanded-mode/qa-plan.md" "## Baseline Checks"
 assert_contains "$SKILL_DIR/templates/expanded-mode/agent-brief.md" "## Non-Owned Scope"
 assert_contains "$SKILL_DIR/templates/expanded-mode/handoff.md" "## Next Safest Action"
+
+python3 - "$SKILL_DIR/tests/fixtures/linear_issue_templates.md" <<'PY'
+import sys
+from pathlib import Path
+
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+section_names = (
+    "Normal-Mode Project Description",
+    "Guide Issue",
+    "Normal-Mode Child Issue",
+    "Workstream Issue",
+    "Child Issue",
+    "Expanded-Mode Project Charter",
+    "Expanded-Mode Issue Body",
+    "Continuous Discovery Issue Candidate",
+    "Final Completion Comment",
+)
+
+
+def section(name):
+    marker = f"## {name}"
+    start = text.find(marker)
+    if start == -1:
+        raise SystemExit(f"missing section: {name}")
+    candidates = [
+        text.find(f"\n## {other}", start + len(marker))
+        for other in section_names
+        if other != name
+    ]
+    candidates = [index for index in candidates if index != -1]
+    next_start = min(candidates) if candidates else -1
+    return text[start:] if next_start == -1 else text[start:next_start]
+
+
+required = {
+    "Normal-Mode Project Description": (
+        "## Project Goal",
+        "## Source Of Truth",
+        "## Continuous Issue Discovery",
+        "## Handoff / Context Recovery",
+    ),
+    "Normal-Mode Child Issue": (
+        "## Objective",
+        "## Context",
+        "## Scope",
+        "## Dependencies / Blockers",
+        "## Notes For Future Agents",
+    ),
+    "Expanded-Mode Project Charter": (
+        "## Project Purpose",
+        "## Operating Mode",
+        "## Companion Ledger Path",
+        "## Coordinator Responsibilities",
+    ),
+    "Expanded-Mode Issue Body": (
+        "## Objective",
+        "## Background Context",
+        "## Owned Scope",
+        "## Verification Requirements",
+        "## Required Updates",
+    ),
+    "Continuous Discovery Issue Candidate": (
+        "## Why It Was Discovered",
+        "## Surfaced By",
+        "## Classification",
+        "## Acceptance Criteria",
+        "## Future-Agent Context",
+    ),
+}
+
+for name, headings in required.items():
+    body = section(name)
+    missing = [heading for heading in headings if heading not in body]
+    if missing:
+        raise SystemExit(f"{name} missing headings: {', '.join(missing)}")
+PY
 
 "$BIN" init \
   --ledger "$LEDGER" \
@@ -80,6 +169,10 @@ assert_contains "$LEDGER" "- Repository: /tmp/example-repo"
 assert_contains "$LEDGER" "- Base branch: main"
 assert_contains "$LEDGER" "- Validation mode: standard"
 assert_contains "$LEDGER" "- Deep auto-research loop: not requested"
+assert_contains "$LEDGER" "- Principles surface:"
+assert_contains "$LEDGER" "- Continuous Issue Discovery:"
+assert_contains "$LEDGER" "## Project Principles / Fundamentals"
+assert_contains "$LEDGER" "## Continuous Issue Discovery Log"
 assert_contains "$TMP_DIR/init.out" "Ledger initialized:"
 assert_contains "$LEDGER" "## Decisions"
 assert_contains "$LEDGER" "## Blockers"

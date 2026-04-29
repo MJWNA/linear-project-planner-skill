@@ -80,6 +80,31 @@ def main() -> int:
         and exists("templates/expanded-mode/qa-plan.md")
         and exists("templates/expanded-mode/agent-brief.md")
         and exists("templates/expanded-mode/handoff.md"),
+        "project_principles_surface": exists("references/project-principles.md")
+        and exists("templates/project-principles.md")
+        and contains("SKILL.md", "what project principles or fundamentals should guide repeated decisions")
+        and contains("SKILL.md", "references/project-principles.md")
+        and contains("references/project-principles.md", "Every Linear project gets a principles surface")
+        and contains("references/project-principles.md", "Small baseline projects")
+        and contains("references/project-principles.md", "Promotion Threshold")
+        and contains("references/project-principles.md", "Do not silently rewrite accepted principles")
+        and contains("templates/EXECUTION.md", "## Project Principles / Fundamentals")
+        and contains("templates/project-principles.md", "## Accepted Principles"),
+        "continuous_issue_discovery": contains("SKILL.md", "## Continuous Issue Discovery")
+        and contains("SKILL.md", "Create a Linear issue immediately")
+        and contains("SKILL.md", "Propose an issue candidate")
+        and contains("SKILL.md", "Normal mode keeps this lightweight")
+        and contains("references/project-structure.md", "## Continuous Issue Discovery")
+        and contains("references/expanded-mode.md", "## Continuous Issue Discovery Protocol")
+        and contains("templates/EXECUTION.md", "## Continuous Issue Discovery Log")
+        and contains("tests/fixtures/linear_issue_templates.md", "## Continuous Discovery Issue Candidate"),
+        "structured_normal_expanded_outputs": contains("references/project-structure.md", "## Normal-Mode Project Description")
+        and contains("references/project-structure.md", "## Normal-Mode Issue Body")
+        and contains("references/expanded-mode.md", "## Project Charter Description")
+        and contains("references/expanded-mode.md", "Step-by-step working instructions")
+        and contains("tests/fixtures/linear_issue_templates.md", "## Expanded-Mode Project Charter")
+        and contains("tests/fixtures/linear_issue_templates.md", "## Expanded-Mode Issue Body")
+        and contains("references/command-schemas.md", "## Planning Output Modes"),
         "production_sink_gates": exists("templates/production-gates.md")
         and contains("lib/linear_agent/cli.py", "inventory"),
         "documentation": exists("docs/examples/local-skill-audit.md")
