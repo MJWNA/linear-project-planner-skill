@@ -95,7 +95,16 @@ compaction-safe notes.
     {
       "key": "MAS-435",
       "title": "Define full Linear graph plan schema and command contract",
+      "description": "## Objective\nDefine the schema.\n\n## Acceptance Criteria\n- Schema is documented.\n\n## Verification\nRun graph-plan.",
       "parent": "",
+      "milestone": "Linear Graph Automation",
+      "labels": ["agent-ready", "serial-required"],
+      "links": [
+        {
+          "title": "Command schemas",
+          "url": "file://references/command-schemas.md"
+        }
+      ],
       "blockedBy": [],
       "blocks": ["MAS-436"],
       "writeSet": ["references/command-schemas.md"],
@@ -105,7 +114,7 @@ compaction-safe notes.
 }
 ```
 
-The graph is applied in phases: validate, dry-run, apply, read-back, then repair/report. Existing objects are matched by stable keys before creating anything new.
+The graph is applied in phases: validate, dry-run, apply, read-back, then repair/report. Existing objects are matched by stable keys before creating anything new. The local fake transport preserves and verifies issue descriptions, milestone assignment, and links so dogfood tests can prove issue actionability instead of only proving title/dependency shape.
 
 ## Tool Description Checklist
 

@@ -32,7 +32,14 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
             "labels": ["agent-ready", "serial-required"],
             "milestones": ["Graph Automation"],
             "issues": [
-                {"key": "MAS-1", "title": "Define schema", "writeSet": ["references/command-schemas.md"]},
+                {
+                    "key": "MAS-1",
+                    "title": "Define schema",
+                    "description": "## Objective\nDefine schema.\n\n## Acceptance Criteria\n- Done.\n\n## Verification\nRun graph-plan.",
+                    "milestone": "Graph Automation",
+                    "links": [{"title": "Schema docs", "url": "file://references/command-schemas.md"}],
+                    "writeSet": ["references/command-schemas.md"],
+                },
                 {"key": "MAS-2", "title": "Apply graph", "parent": "MAS-1", "blockedBy": ["MAS-1"], "writeSet": ["lib/linear_agent/graph.py"], "serial": True},
                 {"key": "MAS-3", "title": "Docs", "writeSet": ["README.md"]},
             ],
@@ -167,6 +174,7 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
             self.assertEqual(apply_result.returncode, 0, apply_result.stderr)
             payload = json.loads(state.read_text(encoding="utf-8"))
             payload["issues"]["MAS-1"]["title"] = "Drifted"
+            payload["issues"]["MAS-1"]["description"] = "Missing actionability"
             state.write_text(json.dumps(payload), encoding="utf-8")
 
             readback = subprocess.run(
@@ -181,8 +189,9 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
 
             self.assertEqual(readback.returncode, 1)
             drift = json.loads(readback.stdout)["drift"]
-            self.assertEqual(drift[0]["field"], "title")
-            self.assertEqual(drift[0]["actual"], "Drifted")
+            fields = {item["field"]: item["actual"] for item in drift}
+            self.assertEqual(fields["title"], "Drifted")
+            self.assertEqual(fields["description"], "Missing actionability")
 
     def test_allocate_writes_ledger_rows_and_json_sidecar(self) -> None:
         with tempfile.TemporaryDirectory() as raw:

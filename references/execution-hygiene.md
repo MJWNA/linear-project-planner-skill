@@ -20,6 +20,15 @@ Update it after every material state transition. If Linear and the ledger
 disagree, trust Linear for canonical issue status, trust comments for audit
 history, and record reconciliation.
 
+## Source Checkpoints
+
+Use `references/source-checkpoints.md` before decisions that can drift or lose
+context: kickoff, planning, issue creation, implementation, parallel
+delegation, scope change, verification, handoff, and closeout. Do not reread
+everything every time. Read the smallest source set that can change the next
+decision, then record the checkpoint in the ledger or the relevant Linear
+comment.
+
 ## `linear-agent` Workflow
 
 Use the wrapper when available:

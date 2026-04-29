@@ -50,6 +50,11 @@ def main() -> int:
         and exists("tests/fixtures/linear_graph_plan.json"),
         "ledger_design": contains("lib/linear_agent/ledger.py", "write_state_sidecar")
         and contains("lib/linear_agent/ledger.py", "validate_ledger"),
+        "source_checkpoint_discipline": exists("references/source-checkpoints.md")
+        and contains("SKILL.md", "references/source-checkpoints.md")
+        and contains("references/source-checkpoints.md", "## Before Parallel Delegation")
+        and contains("references/source-checkpoints.md", "## Before Closeout")
+        and contains("templates/EXECUTION.md", "## Source Material Checkpoints"),
         "cli_wrapper_ux": contains("scripts/linear-agent", "python3 -m linear_agent.cli")
         and contains("lib/linear_agent/cli.py", "--json"),
         "direct_linear_automation": contains("lib/linear_agent/cli.py", "graph-apply")

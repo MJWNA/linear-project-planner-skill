@@ -617,7 +617,7 @@ def apply_graph_to_fake_state(path: Path, plan: dict[str, Any]) -> None:
                 "id": current.get("id", f"issue-{key.lower()}"),
                 "identifier": key,
                 "title": issue["title"],
-                "description": current.get("description", ""),
+                "description": issue.get("description", current.get("description", "")),
                 "url": current.get("url", f"https://linear.app/example/{key}"),
                 "state": current.get("state", {"id": "todo", "name": "Todo", "type": "unstarted"}),
                 "team": current.get("team", {"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"}),
@@ -629,6 +629,8 @@ def apply_graph_to_fake_state(path: Path, plan: dict[str, Any]) -> None:
                 "updatedAt": timestamp(),
                 "labels": issue.get("labels", []),
                 "parent": issue.get("parent", ""),
+                "milestone": issue.get("milestone", ""),
+                "links": issue.get("links", []),
                 "blocks": issue.get("blocks", []),
                 "blockedBy": issue.get("blocked_by", []),
             }
@@ -673,15 +675,21 @@ def graph_drift(state: dict[str, Any], plan: dict[str, Any]) -> list[dict[str, A
             continue
         expected_fields = {
             "title": issue["title"],
+            "description": issue.get("description", ""),
             "labels": sorted(issue.get("labels", [])),
             "parent": issue.get("parent", ""),
+            "milestone": issue.get("milestone", ""),
+            "links": sorted(issue.get("links", []), key=lambda item: (item.get("title", ""), item.get("url", ""))),
             "blocks": sorted(issue.get("blocks", [])),
             "blockedBy": sorted(issue.get("blocked_by", [])),
         }
         actual_fields = {
             "title": actual.get("title", ""),
+            "description": actual.get("description", ""),
             "labels": sorted(actual.get("labels", [])),
             "parent": actual.get("parent", ""),
+            "milestone": actual.get("milestone", ""),
+            "links": sorted(actual.get("links", []), key=lambda item: (item.get("title", ""), item.get("url", ""))),
             "blocks": sorted(actual.get("blocks", [])),
             "blockedBy": sorted(actual.get("blockedBy", [])),
         }
