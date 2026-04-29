@@ -99,6 +99,7 @@ The skill keeps the front-door instructions compact and moves deeper contracts i
 - `references/project-structure.md`: milestones, labels, parent issues, child issue template, sparse link graph, and research-as-planned-work template.
 - `references/project-principles.md`: scaled Project Principles / Fundamentals surfaces for baseline and expanded projects.
 - `references/execution-hygiene.md`: companion ledger, `linear-agent`, issue-state hygiene, worktrees, completion comments, and finalization.
+- `references/source-checkpoints.md`: phase-based source rereading checkpoints for kickoff, planning, issue creation, implementation, delegation, scope changes, verification, handoff, and closeout.
 - `references/validation-modes.md`: standard validation, optional deep auto-research validation, production gates, and sink/output preservation.
 - `templates/EXECUTION.md`: living ledger template.
 - `templates/project-principles.md`: full companion principles document for larger, ambiguous, or expanded-mode projects.

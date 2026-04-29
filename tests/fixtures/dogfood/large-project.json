@@ -1,0 +1,127 @@
+{
+  "project": {
+    "name": "[SANDBOX] Dogfood Large - Reporting Platform Hardening",
+    "mode": "normal",
+    "brief": "Turn a vague request to harden a reporting platform into research, implementation, QA, dependency sequencing, and closeout work while preserving sync outputs.",
+    "ledgerPath": "../.codex-linear-ledgers/sandbox-dogfood-large/EXECUTION.md",
+    "principles": [
+      "Preserve existing report and sync outputs unless explicitly changed.",
+      "Research uncertain domains before implementation.",
+      "Use milestones and blockers so future agents can choose safe work."
+    ]
+  },
+  "labels": [
+    "agent-ready",
+    "parallel-safe",
+    "serial-required",
+    "touches-db",
+    "touches-sync",
+    "production-risk",
+    "verification-missing",
+    "continuous-discovery"
+  ],
+  "milestones": [
+    "Agent Bootstrap & Triage",
+    "Research & Discovery",
+    "Data Integrity & Business Logic",
+    "Sync, Cron & Integration Reliability",
+    "Final Verification, Release & Monitoring"
+  ],
+  "issues": [
+    {
+      "key": "DOG-L-001",
+      "title": "Guide: Agent Operating Guide",
+      "labels": ["agent-ready"],
+      "milestone": "Agent Bootstrap & Triage",
+      "description": "## Objective\nDefine the operating system for a large reporting hardening project.\n\n## Context\nThe request is intentionally vague and must be decomposed into research, output preservation, implementation, QA, and handoff work.\n\n## Acceptance Criteria\n- Original brief is preserved.\n- Source-of-truth surfaces are named.\n- First safe research and inventory issues are identified.\n\n## Verification\nRead back project graph, milestones, ledger, and dependency edges.\n\n## Notes For Future Agents\nDo not implement until research and output inventory are complete.",
+      "links": [
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-large/EXECUTION.md"}
+      ],
+      "writeSet": ["../.codex-linear-ledgers/sandbox-dogfood-large/EXECUTION.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-L-002",
+      "title": "Guide: Verification Matrix",
+      "labels": ["agent-ready", "verification-missing"],
+      "milestone": "Agent Bootstrap & Triage",
+      "description": "## Objective\nDefine verification gates for reports, sync outputs, data semantics, and release closeout.\n\n## Context\nReporting hardening is unsafe without before/after output preservation checks.\n\n## Acceptance Criteria\n- Baseline checks are named.\n- Output preservation gates are required before data changes.\n- Final read-back requirements are explicit.\n\n## Verification\nReview matrix against inventory findings and update when discovery changes scope.\n\n## Notes For Future Agents\nTreat missing output baselines as a QA / verification gap.",
+      "links": [
+        {"title": "Production gates template", "url": "file://templates/production-gates.md"}
+      ],
+      "writeSet": ["docs/reporting-verification-matrix.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-L-003",
+      "title": "Research reporting architecture and source material",
+      "parent": "DOG-L-001",
+      "labels": ["agent-ready", "parallel-safe"],
+      "milestone": "Research & Discovery",
+      "description": "## Objective\nMap report generation, data sources, schedules, and downstream consumers.\n\n## Context\nThe project cannot be decomposed safely until source material is known.\n\n## Acceptance Criteria\n- Report entry points and source tables are listed.\n- Existing docs and repo instructions are linked.\n- Unknowns are classified as blockers, candidates, or context-only notes.\n\n## Verification\nProduce a research artifact and link it from the ledger.\n\n## Notes For Future Agents\nCreate new issues immediately for blocking data or sync discoveries.",
+      "links": [
+        {"title": "Repo instructions", "url": "file://AGENTS.md"},
+        {"title": "Research artifact", "url": "file://docs/reporting-hardening/research.md"}
+      ],
+      "blocks": ["DOG-L-005", "DOG-L-006"],
+      "writeSet": ["docs/reporting-hardening/research.md"]
+    },
+    {
+      "key": "DOG-L-004",
+      "title": "Inventory production gates and sync outputs",
+      "parent": "DOG-L-001",
+      "labels": ["agent-ready", "parallel-safe", "touches-sync", "production-risk"],
+      "milestone": "Research & Discovery",
+      "description": "## Objective\nInventory deploy, auth, cron, data semantics, and sink/output preservation gates.\n\n## Context\nThe skill should force output preservation before implementation touches reports or sync paths.\n\n## Acceptance Criteria\n- Current sinks and reports are listed.\n- Before/after comparison method is named.\n- Missing baselines become QA / verification gap issues.\n\n## Verification\nRun `linear-agent inventory --repo <repo>` and record the output.\n\n## Notes For Future Agents\nDo not mark data work agent-ready until this issue is complete.",
+      "links": [
+        {"title": "Production gates template", "url": "file://templates/production-gates.md"}
+      ],
+      "blocks": ["DOG-L-005", "DOG-L-006", "DOG-L-007"],
+      "writeSet": ["docs/reporting-hardening/output-inventory.md"]
+    },
+    {
+      "key": "DOG-L-005",
+      "title": "Implement data integrity hardening",
+      "parent": "DOG-L-001",
+      "blockedBy": ["DOG-L-003", "DOG-L-004"],
+      "labels": ["agent-ready", "serial-required", "touches-db", "production-risk"],
+      "milestone": "Data Integrity & Business Logic",
+      "description": "## Objective\nFix confirmed data integrity risks without changing report semantics.\n\n## Context\nImplementation depends on research and output inventory.\n\n## Acceptance Criteria\n- Only confirmed data issues are changed.\n- Before/after report output comparison is recorded.\n- Migration or schema risks are captured.\n\n## Verification\nRun data tests and output comparison gates.\n\n## Notes For Future Agents\nCreate a Decision required issue for ambiguous business semantics.",
+      "links": [
+        {"title": "Research artifact", "url": "file://docs/reporting-hardening/research.md"},
+        {"title": "Output inventory", "url": "file://docs/reporting-hardening/output-inventory.md"}
+      ],
+      "writeSet": ["app/reports/**", "db/**"],
+      "serial": true
+    },
+    {
+      "key": "DOG-L-006",
+      "title": "Harden sync and scheduled reporting reliability",
+      "parent": "DOG-L-001",
+      "blockedBy": ["DOG-L-003", "DOG-L-004"],
+      "labels": ["agent-ready", "serial-required", "touches-sync", "production-risk"],
+      "milestone": "Sync, Cron & Integration Reliability",
+      "description": "## Objective\nAddress confirmed sync or schedule reliability risks.\n\n## Context\nSync changes can leak into downstream outputs, so gates are mandatory.\n\n## Acceptance Criteria\n- Retry/error behavior is verified.\n- Sink outputs remain stable unless explicitly accepted.\n- Monitoring or runbook updates are linked.\n\n## Verification\nRun sync tests, cron dry-run, and output preservation checks.\n\n## Notes For Future Agents\nCreate a Defect issue for any discovered sink mismatch.",
+      "links": [
+        {"title": "Output inventory", "url": "file://docs/reporting-hardening/output-inventory.md"}
+      ],
+      "writeSet": ["app/sync/**", "app/cron/**"],
+      "serial": true
+    },
+    {
+      "key": "DOG-L-007",
+      "title": "Final QA, handoff, and closeout",
+      "parent": "DOG-L-001",
+      "blockedBy": ["DOG-L-005", "DOG-L-006"],
+      "labels": ["agent-ready", "serial-required", "verification-missing"],
+      "milestone": "Final Verification, Release & Monitoring",
+      "description": "## Objective\nClose the hardening project with evidence future agents can trust.\n\n## Context\nLarge projects need project-level reconciliation, residual risks, and handoff notes.\n\n## Acceptance Criteria\n- All blockers are resolved or documented.\n- Verification matrix is complete.\n- Ledger, issue comments, and dependency links agree.\n\n## Verification\nRun final test suite, output preservation comparison, and Linear read-back.\n\n## Notes For Future Agents\nLeave follow-up candidates for useful but non-blocking improvements.",
+      "links": [
+        {"title": "Verification matrix", "url": "file://docs/reporting-verification-matrix.md"},
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-large/EXECUTION.md"}
+      ],
+      "writeSet": ["../.codex-linear-ledgers/sandbox-dogfood-large/EXECUTION.md", "docs/reporting-hardening/handoff.md"],
+      "serial": true
+    }
+  ]
+}

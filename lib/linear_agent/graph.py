@@ -15,8 +15,11 @@ class GraphPlanError(ValueError):
 class GraphIssue:
     key: str
     title: str
+    description: str = ""
     parent: str = ""
+    milestone: str = ""
     labels: list[str] = field(default_factory=list)
+    links: list[dict[str, str]] = field(default_factory=list)
     blocks: list[str] = field(default_factory=list)
     blocked_by: list[str] = field(default_factory=list)
     write_set: list[str] = field(default_factory=list)
@@ -38,8 +41,11 @@ def load_graph_plan(path: Path) -> GraphPlan:
         GraphIssue(
             key=str(item.get("key") or item.get("id") or ""),
             title=str(item.get("title") or ""),
+            description=str(item.get("description") or item.get("body") or ""),
             parent=str(item.get("parent") or item.get("parentKey") or ""),
+            milestone=str(item.get("milestone") or ""),
             labels=list(item.get("labels") or []),
+            links=_load_links(item.get("links") or []),
             blocks=list(item.get("blocks") or []),
             blocked_by=list(item.get("blockedBy") or item.get("blocked_by") or []),
             write_set=list(item.get("writeSet") or item.get("write_set") or []),
@@ -73,6 +79,21 @@ def _load_mapping(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise GraphPlanError("graph plan must be a mapping")
     return payload
+
+
+def _load_links(raw_links: Any) -> list[dict[str, str]]:
+    if not isinstance(raw_links, list):
+        raise GraphPlanError("issue links must be a list")
+    links: list[dict[str, str]] = []
+    for raw_link in raw_links:
+        if not isinstance(raw_link, dict):
+            raise GraphPlanError("issue links must be objects with title and url")
+        title = str(raw_link.get("title") or "")
+        url = str(raw_link.get("url") or "")
+        if not title or not url:
+            raise GraphPlanError("issue links require title and url")
+        links.append({"title": title, "url": url})
+    return links
 
 
 def validate_graph_plan(plan: GraphPlan) -> None:
@@ -122,6 +143,8 @@ def graph_summary(plan: GraphPlan) -> dict[str, Any]:
     parent_count = len([issue for issue in plan.issues if not issue.parent])
     child_count = len([issue for issue in plan.issues if issue.parent])
     edge_count = sum(len(issue.blocks) + len(issue.blocked_by) for issue in plan.issues)
+    described_count = len([issue for issue in plan.issues if issue.description.strip()])
+    link_count = sum(len(issue.links) for issue in plan.issues)
     return {
         "project": plan.project.get("name", ""),
         "labels": len(plan.labels),
@@ -130,6 +153,8 @@ def graph_summary(plan: GraphPlan) -> dict[str, Any]:
         "parents": parent_count,
         "children": child_count,
         "dependencyEdges": edge_count,
+        "describedIssues": described_count,
+        "links": link_count,
     }
 
 
@@ -156,9 +181,12 @@ def render_graph_plan(plan: GraphPlan) -> str:
     ]
     for issue in plan.issues:
         parent = f" parent={issue.parent}" if issue.parent else ""
+        milestone = f" milestone={issue.milestone}" if issue.milestone else ""
         blocked = f" blockedBy={','.join(issue.blocked_by)}" if issue.blocked_by else ""
         blocks = f" blocks={','.join(issue.blocks)}" if issue.blocks else ""
-        lines.append(f"- {issue.key}: {issue.title}{parent}{blocked}{blocks}")
+        described = " described=yes" if issue.description.strip() else " described=no"
+        links = f" links={len(issue.links)}" if issue.links else ""
+        lines.append(f"- {issue.key}: {issue.title}{parent}{milestone}{blocked}{blocks}{described}{links}")
     return "\n".join(lines)
 
 

@@ -91,6 +91,16 @@ Separate git worktrees are required unless the work is read-only.
 - Follow-up issues needed before safe parallel execution:
 - Coordinator decisions, integration, Linear state, dependencies, comments, ledger updates, and final verification owner:
 
+## Source Material Checkpoints
+
+Record compact reread checkpoints when a decision depends on source material
+that may drift or be lost after compaction. Use `references/source-checkpoints.md`
+for the full model.
+
+| Date | Phase | Sources Read | Decision / Change | Ledger Or Linear Update | Follow-Up |
+|---|---|---|---|---|---|
+| TBD | Kickoff / Planning / Issue creation / Implementation / Parallel delegation / Scope change / Verification / Handoff / Closeout | TBD | TBD | TBD | TBD |
+
 ## Continuous Issue Discovery Log
 
 Use this for discovered work that changes project shape or may need follow-up.

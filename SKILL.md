@@ -80,6 +80,9 @@ Load deeper references only when the current task needs them:
 - `references/execution-hygiene.md`: companion ledger, `linear-agent`,
   issue-state hygiene, safe parallelism checkpoints, worktrees, completion
   comments, and finalization.
+- `references/source-checkpoints.md`: phase-based source rereading model for
+  kickoff, planning, issue creation, implementation, parallel delegation, scope
+  changes, verification, handoff, and closeout.
 - `references/validation-modes.md`: standard validation, optional deep
   auto-research validation, production gates, and sink/output preservation.
 - `references/trigger-preservation.md`: trigger-safe front-door contract for
@@ -131,7 +134,10 @@ Before creating issues:
    notes.
 10. Build a sparse link graph across tasks, docs, source artifacts, and
    verification evidence.
-11. Classify validation depth: standard by default; deep auto-research only when
+11. Apply `references/source-checkpoints.md` when the project will span
+    planning, execution, parallel agents, scope changes, verification, handoff,
+    or closeout.
+12. Classify validation depth: standard by default; deep auto-research only when
    explicitly requested, approved, or clearly triggered.
 
 ## Required Guide Issues
