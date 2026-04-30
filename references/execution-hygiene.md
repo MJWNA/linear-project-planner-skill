@@ -40,9 +40,12 @@ linear-agent complete MAS-123 --ledger <path> --verification "<check>: <result>"
 linear-agent reconcile --ledger <path>
 ```
 
-After a dry-run wrapper transition, perform the printed Linear MCP actions and
-read the issue back. If direct mode is used, verify that the CLI confirms Linear
-state and comment read-back.
+When credentials exist, direct GraphQL mode is the primary path: add
+`--apply-linear` so the wrapper writes through `https://api.linear.app/graphql`
+and confirms Linear state/comment read-back. After a dry-run wrapper
+transition, treat the printed Linear app/MCP/manual actions as fallback
+instructions for credentials-free runtimes or explicit connector requests, then
+read the issue back before claiming success.
 
 ## Issue State Hygiene
 

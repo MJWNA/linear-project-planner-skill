@@ -319,6 +319,7 @@ class FakeGraphQLTransport(GraphQLTransport):
             issues = [
                 issue for issue in self.state.setdefault("issues", {}).values()
                 if issue.get("team", {}).get("id") == team_id
+                and issue.get("project", {}).get("id") == variables["projectId"]
                 and issue.get("title", "").lower() == variables["title"].lower()
             ]
             return GraphQLResponse(data={"team": {"issues": {"nodes": issues}}})
@@ -769,23 +770,23 @@ class LinearClient:
             raise LinearAgentError("Linear commentCreate response missing comment")
         return comment
 
-    def issue_by_title(self, team_id: str, title: str) -> dict[str, Any] | None:
+    def issue_by_title(self, team_id: str, project_id: str, title: str) -> dict[str, Any] | None:
         response = self.transport.execute(
             "IssueByTitle",
             ISSUE_BY_TITLE,
-            {"teamId": team_id, "title": title},
+            {"teamId": team_id, "projectId": project_id, "title": title},
         )
         nodes = response.data.get("team", {}).get("issues", {}).get("nodes", [])
         return nodes[0] if nodes else None
 
-    def issue_for_plan(self, team_id: str, issue: dict[str, Any]) -> dict[str, Any] | None:
+    def issue_for_plan(self, team_id: str, project_id: str, issue: dict[str, Any]) -> dict[str, Any] | None:
         identifier = issue.get("identifier") or ""
         if identifier:
             try:
                 return self.issue(identifier)
             except LinearAgentError:
                 pass
-        return self.issue_by_title(team_id, issue["title"])
+        return self.issue_by_title(team_id, project_id, issue["title"])
 
     def wanted_issue_input(
         self,
@@ -819,7 +820,7 @@ class LinearClient:
         milestones: dict[str, dict[str, Any]],
         issues_by_key: dict[str, dict[str, Any]],
     ) -> tuple[str, dict[str, Any]]:
-        current = self.issue_for_plan(team_id, issue)
+        current = self.issue_for_plan(team_id, project_id, issue)
         wanted = self.wanted_issue_input(team_id, project_id, issue, labels, milestones, issues_by_key)
         if not current:
             response = self.transport.execute("IssueCreate", ISSUE_CREATE, {"input": wanted})
@@ -852,7 +853,7 @@ class LinearClient:
         results: list[tuple[str, str, dict[str, Any]]] = []
         to_create: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for issue in issues:
-            current = self.issue_for_plan(team_id, issue)
+            current = self.issue_for_plan(team_id, project_id, issue)
             wanted = self.wanted_issue_input(team_id, project_id, issue, labels, milestones, issues_by_key)
             if not current:
                 to_create.append((issue, wanted))
@@ -1499,9 +1500,9 @@ mutation ProjectMilestoneUpdate($id: String!, $input: ProjectMilestoneUpdateInpu
 """
 
 ISSUE_BY_TITLE = """
-query IssueByTitle($teamId: String!, $title: String!) {
+query IssueByTitle($teamId: String!, $projectId: ID!, $title: String!) {
   team(id: $teamId) {
-    issues(first: 20, filter: { title: { eqIgnoreCase: $title } }) {
+    issues(first: 20, filter: { title: { eqIgnoreCase: $title }, project: { id: { eq: $projectId } } }) {
       nodes { ...IssueFields }
     }
   }

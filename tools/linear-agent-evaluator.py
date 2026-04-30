@@ -104,6 +104,10 @@ def main() -> int:
             contains("README.md", "--apply-linear")
             and contains("README.md", "SCORE 200/200")
             and contains("SKILL.md", "LINEAR_API_KEY")
+            and contains("SKILL.md", "Linear GraphQL is the primary path")
+            and contains("README.md", "direct GraphQL is the primary route")
+            and contains("references/execution-hygiene.md", "direct GraphQL mode is the primary path")
+            and contains("references/operator-cheatsheet.md", "fallback when credentials are unavailable")
             and contains("README.md", "linear-agent reconcile")
             and contains("lib/linear_agent/cli.py", "finalize refuses unfinished issue rows")
             and contains("tests/test-linear-agent.sh", "Expected reconcile against an empty Issue Progress table to fail")
@@ -211,9 +215,11 @@ def main() -> int:
             20,
             contains("lib/linear_agent/graphql.py", "issueBatchCreate")
             and contains("lib/linear_agent/graphql.py", "projectDelete")
+            and contains("lib/linear_agent/graphql.py", "project: { id: { eq: $projectId } }")
             and contains("lib/linear_agent/graphql.py", "pageInfo")
             and contains("lib/linear_agent/graphql.py", "while page_info.get(\"hasNextPage\")")
             and contains("lib/linear_agent/graphql.py", "x-ratelimit-complexity-remaining")
+            and contains("tests/test_linear_agent_graph_features.py", "test_graph_apply_title_lookup_is_project_scoped")
             and contains("tests/test_linear_agent_graph_features.py", "test_project_readback_paginates_all_issues"),
             "missing batch create, schema-current teardown, pagination, or rate-limit budget coverage",
         )

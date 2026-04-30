@@ -8,6 +8,18 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 - Nothing yet.
 
+## 4.0.1 - 2026-04-30
+
+- Made direct Linear GraphQL the documented primary path whenever
+  `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` is available; Linear app/MCP/manual
+  actions are now explicitly framed as fallback-only unless requested.
+- Updated dry-run transition output so agents see the direct API path first and
+  fallback connector actions second.
+- Scoped graph-apply title idempotence to the target project to avoid reusing
+  generic guide issue titles from unrelated Linear projects.
+- Added Context7/official Linear docs checkpoint coverage to the v4.0.1 project
+  and evaluator coverage for API-primary routing.
+
 ## 4.0.0 - 2026-04-30
 
 - Aligned live GraphQL mutations with Linear's current schema by replacing the
