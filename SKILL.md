@@ -230,9 +230,15 @@ statuses, or dependencies. Keep checklist state honest with `[ ]`, `[x]`, and
 
 ## Linear Transition Wrapper
 
-Use `linear-agent` for execution-state transitions and graph creation when
-available. With credentials and `--apply-linear`, the CLI writes directly to
-Linear's GraphQL API and verifies read-back before confirming success. Without
+Use `linear-agent` for execution-state transitions and graph creation. Direct
+Linear GraphQL is the primary path for this skill whenever `LINEAR_API_KEY` or
+`LINEAR_ACCESS_TOKEN` is available. The Codex Linear app/MCP connector is a
+fallback surface only: use it when credentials are unavailable, when the user
+explicitly asks for the connector, or when a direct API operation is not yet
+implemented.
+
+With credentials and `--apply-linear`, the CLI writes directly to Linear's
+GraphQL API and verifies read-back before confirming success. Without
 credentials, keep using dry-run output as the manual fallback plan.
 
 Common commands:
@@ -247,17 +253,20 @@ linear-agent reconcile --ledger <path>
 linear-agent finalize --ledger <path> --verification "<checks>" --evidence "<links>" --linear-reconciled --dependencies "satisfied" --production-gates "not-applicable:<reason>" --sink-gates "not-applicable:<reason>"
 ```
 
-Direct Linear mode requires `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` and
-`--apply-linear`. Endpoint overrides are validated to `https://api.linear.app`
-unless explicitly allowed for trusted testing. Fake transport is test-only and
-requires `LINEAR_AGENT_TEST_MODE=1`.
+Direct Linear mode requires `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` and an
+explicit write opt-in such as `--apply-linear` or `LINEAR_AGENT_APPLY=1`.
+Endpoint overrides are validated to `https://api.linear.app` unless explicitly
+allowed for trusted testing. Fake transport is test-only and requires
+`LINEAR_AGENT_TEST_MODE=1`.
 
 ## Live API Mode
 
 `linear-agent graph-apply --apply-linear --from <plan>.json` creates and
 updates Linear project graphs directly through `https://api.linear.app/graphql`.
 Linear MCP is no longer required for graph creation when credentials are
-available.
+available. If an agent can see credentials, it should not ask the Linear
+app/MCP connector to create, update, read back, reconcile, discover, or promote
+project graph state unless the user explicitly requested that connector path.
 
 Supported live operations:
 

@@ -758,7 +758,15 @@ def print_json_or_text(args: argparse.Namespace, payload: dict[str, Any], text: 
 
 
 def mcp_plan(action: str, issue: str, state: str, comment: str) -> str:
-    return f"""Required Linear MCP actions:
+    direct_mode = (
+        "Direct Linear API primary path is available. Re-run this transition with "
+        "`--apply-linear` to mutate Linear through https://api.linear.app/graphql."
+        if os.environ.get("LINEAR_API_KEY") or os.environ.get("LINEAR_ACCESS_TOKEN")
+        else "Direct Linear API primary path requires LINEAR_API_KEY or LINEAR_ACCESS_TOKEN."
+    )
+    return f"""{direct_mode}
+
+Fallback Linear app/MCP/manual actions when direct API credentials are unavailable or an explicit connector workflow was requested:
 1. _save_issue(id="{issue}", state="{state}")
 2. _save_comment(issueId="{issue}", body=<comment body below>)
 3. Verify with _list_issues(query="{issue}") and confirm state="{state}".
@@ -772,7 +780,7 @@ Comment body:
 
 
 def handoff_plan(comment: str) -> str:
-    return f"""Required Linear MCP actions:
+    return f"""Fallback Linear app/MCP/manual actions:
 1. _save_comment(issueId="<active-or-operating-guide-issue>", body=<comment body below>)
 2. Verify with _list_comments(issueId="<active-or-operating-guide-issue>") and confirm the handoff comment exists.
 3. Reconcile with _list_issues(project="<project-name>") before choosing the next issue.
@@ -786,7 +794,7 @@ Comment body:
 
 
 def finalize_plan(comment: str) -> str:
-    return f"""Required Linear MCP actions:
+    return f"""Fallback Linear app/MCP/manual actions:
 1. _save_comment(issueId="<operating-guide-or-final-verification-issue>", body=<comment body below>)
 2. Verify with Linear project read-back that no Todo or In Progress issues remain.
 3. If any unfinished issue remains, reopen the ledger with linear-agent start/block/handoff before calling the project complete.

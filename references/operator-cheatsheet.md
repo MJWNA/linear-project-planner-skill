@@ -37,7 +37,10 @@ Add gates before implementation issues:
 1. Draft a graph file.
 2. Run `linear-agent graph-plan --from graph.json`.
 3. Run `linear-agent allocate --from graph.json` to check lanes.
-4. Apply with Linear MCP or `linear-agent graph-apply --apply-linear` when direct graph mode is configured.
+4. Apply with `linear-agent graph-apply --apply-linear` when Linear API
+   credentials are available. Use Linear app/MCP/manual actions only as the
+   fallback when credentials are unavailable or the user explicitly requested
+   the connector path.
 5. Run `linear-agent graph-readback --from graph.json`.
 
 ## Local-Only Audit

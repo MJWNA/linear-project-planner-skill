@@ -176,6 +176,72 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
             self.assertEqual(payload["attachments"][0]["metadata"]["source"], "linear-project-planner")
             self.assertTrue(payload["attachments"][0]["groupBySource"])
 
+    def test_graph_apply_title_lookup_is_project_scoped(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            plan = tmp / "graph.json"
+            plan.write_text(
+                json.dumps(
+                    {
+                        "project": {"name": "New Project"},
+                        "issues": [{"key": "MAS-1", "title": "Guide: Agent Operating Guide"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            state = tmp / "linear-state.json"
+            state.write_text(
+                json.dumps(
+                    {
+                        "projects": [
+                            {
+                                "id": "old-project",
+                                "name": "Old Project",
+                                "description": "",
+                                "url": "https://linear.app/example/project/old-project",
+                                "teams": {"nodes": [{"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"}]},
+                            }
+                        ],
+                        "issues": {
+                            "MAS-1": {
+                                "id": "issue-mas-1",
+                                "identifier": "MAS-1",
+                                "title": "Guide: Agent Operating Guide",
+                                "description": "Old project issue",
+                                "url": "https://linear.app/example/MAS-1",
+                                "state": {"id": "todo", "name": "Todo", "type": "unstarted"},
+                                "team": {"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"},
+                                "project": {"id": "old-project", "name": "Old Project", "url": "https://linear.app/example/project/old-project"},
+                                "labels": {"nodes": []},
+                                "comments": {"nodes": []},
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            env = {**os.environ, "LINEAR_AGENT_FAKE_STATE": str(state), "LINEAR_AGENT_TEST_MODE": "1"}
+
+            result = subprocess.run(
+                [str(BIN), "graph-apply", "--from", str(plan), "--apply-linear"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(state.read_text(encoding="utf-8"))
+            self.assertEqual(payload["issues"]["MAS-1"]["project"]["id"], "old-project")
+            new_issues = [
+                issue for issue in payload["issues"].values()
+                if issue["title"] == "Guide: Agent Operating Guide"
+                and issue["project"]["name"] == "New Project"
+            ]
+            self.assertEqual(len(new_issues), 1)
+
     def test_project_readback_paginates_all_issues(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             tmp = Path(raw)

@@ -10,6 +10,11 @@ tested steps.
 Use `linear_project.*` for function-tool, MCP, or tool-search metadata. The
 shell CLI is the implemented reference surface.
 
+Direct Linear GraphQL is the primary implementation path when credentials are
+available. MCP or connector tools should wrap this contract only when they call
+the same API behavior, when the runtime has no direct API credentials, or when
+the user explicitly requests the connector.
+
 | Tool | Purpose | Side effects |
 |---|---|---|
 | `linear_project.init` | Create a companion execution ledger from a template. | Writes a local ledger file. Refuses overwrite unless forced. |
@@ -39,6 +44,9 @@ shell CLI is the implemented reference surface.
 - `apply_linear`: explicit opt-in for direct Linear writes.
 - `json`: emit stable machine-readable output.
 - `from`: path to a graph plan file for graph and allocation commands.
+- `connector_fallback`: allowed only when credentials are missing, direct API
+  lacks the requested operation, or the user explicitly asks for the Linear app
+  or MCP connector.
 
 ## Planning Output Modes
 

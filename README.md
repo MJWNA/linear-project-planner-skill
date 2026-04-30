@@ -13,6 +13,12 @@ Agent-ready Linear project planning, execution tracking, and cross-session hando
 > project-scan pagination, richer attachment metadata, and rate-limit budget
 > awareness.
 
+For this skill's own workflow, direct GraphQL is the primary route whenever
+`LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` is available. Use the Codex Linear
+app/MCP connector only as a fallback for credentials-free runtimes, explicit
+connector requests, or operations that have not yet been implemented in
+`linear-agent`.
+
 This skill helps an AI agent turn a Linear project into a real execution system. Instead of producing a flat backlog and hoping future agents remember what happened, it creates a structured operating model: milestones, parent workstreams, guide issues, labels, verification gates, issue-state hygiene, and a companion Markdown execution ledger that survives context resets.
 
 The core idea is simple: Linear is the canonical project tracker, but agents also need a durable local memory file that explains the original prompt, the current state, which tasks are done, which issue is active, what was verified, and what the next safest action is.
@@ -252,8 +258,9 @@ The detailed workflow lives in [references/expanded-mode.md](references/expanded
 
 The wrapper updates the local ledger and, when `--apply-linear` or
 `LINEAR_AGENT_APPLY=1` is set, writes the matching Linear state/comment through
-the GraphQL API before read-back verification. Dry-run mode remains available
-for credentials-free runtimes and prints the manual fallback actions.
+the GraphQL API before read-back verification. With credentials loaded, this
+direct API path is preferred. Dry-run mode remains available for
+credentials-free runtimes and prints the Linear app/MCP/manual fallback actions.
 
 Example:
 
@@ -420,7 +427,9 @@ linear-agent start MAS-123 \
   --note "Claimed for implementation"
 ```
 
-By default, `linear-agent` updates the ledger and prints the Linear actions an agent should perform. To apply the transition directly through Linear's GraphQL API, set credentials and add `--apply-linear`:
+By default, `linear-agent` updates the ledger and prints the safest next action.
+To apply the transition through the primary direct Linear GraphQL API path, set
+credentials and add `--apply-linear`:
 
 ```bash
 LINEAR_API_KEY=lin_api_... linear-agent start MAS-123 \
@@ -715,7 +724,7 @@ shellcheck install.sh scripts/linear-agent tests/test-linear-agent.sh
 
 ## Deployment / Release
 
-Current production release: `v4.0.0`.
+Current production release: `v4.0.1`.
 
 The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases use the manual release workflow after a known-good commit is tagged, [CHANGELOG.md](CHANGELOG.md) is updated, and CI passes.
 
@@ -729,7 +738,7 @@ The live Linear smoke workflow is not expected to run on normal pull requests. T
 - If `init` refuses to write the ledger, the file already exists. Use `--force` only when replacing it is intentional.
 - If `complete` fails, add a concrete `--verification` string.
 - If `start --parallel-write` fails, provide a `--worktree` path so write-capable agents do not share one checkout.
-- If `--apply-linear` fails with missing credentials, set `LINEAR_API_KEY`, set `LINEAR_ACCESS_TOKEN`, or use default dry-run mode and perform the printed fallback actions.
+- If `--apply-linear` fails with missing credentials, set `LINEAR_API_KEY`, set `LINEAR_ACCESS_TOKEN`, or use default dry-run mode and perform the printed Linear app/MCP/manual fallback actions.
 - If `--apply-linear` reports a post-update confirmation failure, run `linear-agent reconcile --ledger <path>` before manually confirming the ledger.
 - If direct mode reports a read-back mismatch, run `linear-agent reconcile --ledger /path/to/EXECUTION.md` before continuing.
 - If Linear state names differ in your workspace, set the `LINEAR_STATE_*` override variables or record the mismatch in the ledger before continuing.
