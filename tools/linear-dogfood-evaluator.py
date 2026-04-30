@@ -69,6 +69,7 @@ def live_run_plan(plan_path: Path, plan: dict[str, Any]) -> dict[str, Any]:
         tmp = Path(raw)
         state = tmp / "linear-state.json"
         ledger = tmp / "EXECUTION.md"
+        state.write_text("{}", encoding="utf-8")
         env = {
             "LINEAR_AGENT_TEST_MODE": "1",
             "LINEAR_AGENT_FAKE_STATE": str(state),

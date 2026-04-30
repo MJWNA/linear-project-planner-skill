@@ -8,7 +8,7 @@ import time
 import urllib.error
 import urllib.request
 from urllib.parse import urlparse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,67 @@ class LinearAgentError(RuntimeError):
 @dataclass
 class GraphQLResponse:
     data: dict[str, Any]
+
+
+@dataclass
+class SpilloverStore:
+    root: Path
+    project_name: str
+    records: list[dict[str, str]] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.root = self.root.expanduser().resolve()
+
+    def spill_issue(self, issue: dict[str, Any], error: Exception) -> dict[str, Any]:
+        full_description = issue.get("description") or ""
+        if not full_description.strip():
+            return issue
+        self.root.mkdir(parents=True, exist_ok=True)
+        issue_key = issue.get("key") or issue.get("identifier") or "issue"
+        title = issue.get("title") or issue_key
+        path = self.root / f"{slug_id(issue_key)}-{slug_id(title)[:56] or 'context'}.md"
+        body = "\n".join(
+            [
+                "---",
+                f"linear_project: {self.project_name}",
+                f"linear_issue_key: {issue_key}",
+                f"linear_issue_title: {title}",
+                f"created_at: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
+                "source: linear-agent reactive spillover",
+                "reason: Linear rejected the original issue payload as too large.",
+                "---",
+                "",
+                f"# {title}",
+                "",
+                "## Spillover Reason",
+                "",
+                "Linear rejected the original issue payload with a size or character-limit error.",
+                "The Linear issue was retried with a compact pointer to this local file.",
+                "",
+                "## Linear Retry Context",
+                "",
+                f"- Project: {self.project_name}",
+                f"- Issue key: {issue_key}",
+                f"- Issue title: {title}",
+                f"- Error: {str(error)}",
+                "",
+                "## Original Issue Description",
+                "",
+                full_description,
+                "",
+            ]
+        )
+        path.write_text(body, encoding="utf-8")
+        record = {
+            "issue": str(issue_key),
+            "title": str(title),
+            "path": str(path),
+            "reason": "linear-size-limit",
+        }
+        self.records.append(record)
+        compact_issue = dict(issue)
+        compact_issue["description"] = compact_spillover_description(title, path)
+        return compact_issue
 
 
 class GraphQLTransport:
@@ -325,6 +386,7 @@ class FakeGraphQLTransport(GraphQLTransport):
             return GraphQLResponse(data={"team": {"issues": {"nodes": issues}}})
 
         if operation_name == "IssueCreate":
+            self._enforce_issue_limits(variables["input"])
             team = self._team(variables["input"]["teamId"])
             number = len(self.state.setdefault("issues", {})) + 1
             identifier = variables["input"].get("id") or f"{team.get('key', 'MAS')}-{number}"
@@ -336,6 +398,8 @@ class FakeGraphQLTransport(GraphQLTransport):
         if operation_name == "IssueBatchCreate":
             created = []
             for values in variables["input"]["issues"]:
+                self._enforce_issue_limits(values)
+            for values in variables["input"]["issues"]:
                 team = self._team(values["teamId"])
                 number = len(self.state.setdefault("issues", {})) + 1
                 identifier = values.get("id") or f"{team.get('key', 'MAS')}-{number}"
@@ -346,6 +410,7 @@ class FakeGraphQLTransport(GraphQLTransport):
             return GraphQLResponse(data={"issueBatchCreate": {"success": True, "issues": created}})
 
         if operation_name == "IssueUpdate":
+            self._enforce_issue_limits(variables["input"])
             issue = self._issue_by_internal_id(variables["id"])
             self._apply_issue_input(issue, variables["input"])
             self._write_state()
@@ -427,6 +492,18 @@ class FakeGraphQLTransport(GraphQLTransport):
         if issue is None:
             raise LinearAgentError(f"Linear issue not found: {identifier}")
         return issue
+
+    def _enforce_issue_limits(self, values: dict[str, Any]) -> None:
+        limits = self.state.get("limits", {})
+        max_description = limits.get("issueDescriptionMax")
+        if not max_description:
+            return
+        description = values.get("description") or ""
+        if len(description) > int(max_description):
+            raise LinearAgentError(
+                f"Linear GraphQL errors: issue description must be less than "
+                f"{max_description} characters"
+            )
 
     def _state(self, state_id: str) -> dict[str, Any]:
         for state in self.state.get("states", []):
@@ -819,22 +896,42 @@ class LinearClient:
         labels: dict[str, dict[str, Any]],
         milestones: dict[str, dict[str, Any]],
         issues_by_key: dict[str, dict[str, Any]],
+        spillover: SpilloverStore | None = None,
     ) -> tuple[str, dict[str, Any]]:
         current = self.issue_for_plan(team_id, project_id, issue)
         wanted = self.wanted_issue_input(team_id, project_id, issue, labels, milestones, issues_by_key)
         if not current:
-            response = self.transport.execute("IssueCreate", ISSUE_CREATE, {"input": wanted})
+            try:
+                response = self.transport.execute("IssueCreate", ISSUE_CREATE, {"input": wanted})
+            except LinearAgentError as exc:
+                if not should_spill_issue(exc, issue, spillover):
+                    raise
+                issue = spillover.spill_issue(issue, exc)
+                wanted = self.wanted_issue_input(team_id, project_id, issue, labels, milestones, issues_by_key)
+                response = self.transport.execute("IssueCreate", ISSUE_CREATE, {"input": wanted})
             created = mutation_payload(response, "issueCreate", "issue")
             return "created", self.issue(created["identifier"])
 
         changes = issue_update_changes(current, wanted)
         if not changes:
             return "reused", current
-        response = self.transport.execute(
-            "IssueUpdate",
-            ISSUE_UPDATE,
-            {"id": current["id"], "input": changes},
-        )
+        try:
+            response = self.transport.execute(
+                "IssueUpdate",
+                ISSUE_UPDATE,
+                {"id": current["id"], "input": changes},
+            )
+        except LinearAgentError as exc:
+            if not should_spill_issue(exc, issue, spillover):
+                raise
+            issue = spillover.spill_issue(issue, exc)
+            wanted = self.wanted_issue_input(team_id, project_id, issue, labels, milestones, issues_by_key)
+            changes = issue_update_changes(current, wanted)
+            response = self.transport.execute(
+                "IssueUpdate",
+                ISSUE_UPDATE,
+                {"id": current["id"], "input": changes},
+            )
         updated = mutation_payload(response, "issueUpdate", "issue")
         read_back = self.issue(updated["identifier"])
         if read_back.get("title") != issue["title"]:
@@ -849,6 +946,7 @@ class LinearClient:
         labels: dict[str, dict[str, Any]],
         milestones: dict[str, dict[str, Any]],
         issues_by_key: dict[str, dict[str, Any]],
+        spillover: SpilloverStore | None = None,
     ) -> list[tuple[str, str, dict[str, Any]]]:
         results: list[tuple[str, str, dict[str, Any]]] = []
         to_create: list[tuple[dict[str, Any], dict[str, Any]]] = []
@@ -862,31 +960,54 @@ class LinearClient:
             if not changes:
                 results.append((issue["key"], "reused", current))
                 continue
-            response = self.transport.execute(
-                "IssueUpdate",
-                ISSUE_UPDATE,
-                {"id": current["id"], "input": changes},
+            status, read_back = self.ensure_issue(
+                team_id,
+                project_id,
+                issue,
+                labels,
+                milestones,
+                issues_by_key,
+                spillover,
             )
-            updated = mutation_payload(response, "issueUpdate", "issue")
-            read_back = self.issue(updated["identifier"])
-            if read_back.get("title") != issue["title"]:
-                raise LinearAgentError(f"Linear issue read-back mismatch after update: {issue['title']}")
-            results.append((issue["key"], "updated", read_back))
+            results.append((issue["key"], status, read_back))
 
         if not to_create:
             return results
         if len(to_create) == 1:
             issue, wanted = to_create[0]
-            response = self.transport.execute("IssueCreate", ISSUE_CREATE, {"input": wanted})
-            created = mutation_payload(response, "issueCreate", "issue")
-            results.append((issue["key"], "created", self.issue(created["identifier"])))
+            status, created = self.ensure_issue(
+                team_id,
+                project_id,
+                issue,
+                labels,
+                milestones,
+                issues_by_key,
+                spillover,
+            )
+            results.append((issue["key"], status, created))
             return results
 
-        response = self.transport.execute(
-            "IssueBatchCreate",
-            ISSUE_BATCH_CREATE,
-            {"input": {"issues": [wanted for _, wanted in to_create]}},
-        )
+        try:
+            response = self.transport.execute(
+                "IssueBatchCreate",
+                ISSUE_BATCH_CREATE,
+                {"input": {"issues": [wanted for _, wanted in to_create]}},
+            )
+        except LinearAgentError as exc:
+            if not spillover or not is_size_limit_error(exc):
+                raise
+            for issue, _ in to_create:
+                status, created = self.ensure_issue(
+                    team_id,
+                    project_id,
+                    issue,
+                    labels,
+                    milestones,
+                    issues_by_key,
+                    spillover,
+                )
+                results.append((issue["key"], status, created))
+            return results
         payload = response.data.get("issueBatchCreate", {})
         if not payload.get("success"):
             raise LinearAgentError("Linear issueBatchCreate returned success=false")
@@ -1034,9 +1155,52 @@ def issue_update_changes(current: dict[str, Any], wanted: dict[str, Any]) -> dic
     return {key: value for key, value in changes.items() if value is not None}
 
 
-def apply_graph(plan: dict[str, Any]) -> dict[str, Any]:
+def should_spill_issue(
+    exc: Exception,
+    issue: dict[str, Any],
+    spillover: SpilloverStore | None,
+) -> bool:
+    return bool(spillover and issue.get("description") and is_size_limit_error(exc))
+
+
+def is_size_limit_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    patterns = (
+        "too long",
+        "too large",
+        "exceed",
+        "maximum",
+        "max length",
+        "character limit",
+        "must be less than",
+        "less than",
+        "string is longer",
+        "payload size",
+        "request entity too large",
+    )
+    return any(pattern in text for pattern in patterns)
+
+
+def compact_spillover_description(title: str, path: Path) -> str:
+    return "\n".join(
+        [
+            "## Objective",
+            title,
+            "",
+            "## Context",
+            f"Full context spilled to local file after Linear rejected the original body: `{path}`",
+            "",
+            "<!-- linear-agent-spillover -->",
+        ]
+    )
+
+
+def apply_graph(plan: dict[str, Any], spillover_dir: str | Path | None = None) -> dict[str, Any]:
     client = LinearClient.from_env()
     team = client.resolve_team(plan.get("project") or {})
+    spillover = None
+    if spillover_dir:
+        spillover = SpilloverStore(Path(spillover_dir), plan["project"]["name"])
     summary: dict[str, dict[str, int]] = {
         "project": {"created": 0, "reused": 0, "updated": 0, "skipped": 0},
         "labels": {"created": 0, "reused": 0, "updated": 0, "skipped": 0},
@@ -1044,6 +1208,7 @@ def apply_graph(plan: dict[str, Any]) -> dict[str, Any]:
         "issues": {"created": 0, "reused": 0, "updated": 0, "skipped": 0},
         "relations": {"created": 0, "reused": 0, "updated": 0, "skipped": 0},
         "attachments": {"created": 0, "reused": 0, "updated": 0, "skipped": 0},
+        "spillovers": {"created": 0, "reused": 0, "updated": 0, "skipped": 0},
     }
 
     project_status, project = client.ensure_project(team["id"], plan["project"])
@@ -1065,13 +1230,13 @@ def apply_graph(plan: dict[str, Any]) -> dict[str, Any]:
     parent_issues = [issue for issue in plan.get("issues", []) if not issue.get("parent")]
     child_issues = [issue for issue in plan.get("issues", []) if issue.get("parent")]
     for issue_key, status, item in client.ensure_issue_group(
-        team["id"], project["id"], parent_issues, labels, milestones, issues_by_key
+        team["id"], project["id"], parent_issues, labels, milestones, issues_by_key, spillover
     ):
         issues_by_key[issue_key] = item
         summary["issues"][status] += 1
 
     for issue_key, status, item in client.ensure_issue_group(
-        team["id"], project["id"], child_issues, labels, milestones, issues_by_key
+        team["id"], project["id"], child_issues, labels, milestones, issues_by_key, spillover
     ):
         issues_by_key[issue_key] = item
         summary["issues"][status] += 1
@@ -1103,10 +1268,13 @@ def apply_graph(plan: dict[str, Any]) -> dict[str, Any]:
     read_back = client.project_readback(project["id"])
     if not read_back.get("id"):
         raise LinearAgentError(f"Linear project read-back failed after graph apply: {project['name']}")
+    if spillover:
+        summary["spillovers"]["created"] = len(spillover.records)
     return {
         "project": project,
         "team": team,
         "summary": summary,
+        "spillovers": spillover.records if spillover else [],
         "issues": {key: {"id": item["id"], "identifier": item["identifier"], "url": item.get("url", "")} for key, item in issues_by_key.items()},
     }
 
@@ -1239,6 +1407,8 @@ def is_allowed_attachment_url(value: str) -> bool:
 
 def descriptions_match(expected: str, actual: str) -> bool:
     if expected == actual:
+        return True
+    if "<!-- linear-agent-spillover -->" in actual:
         return True
     if not expected.strip():
         return not actual.strip()

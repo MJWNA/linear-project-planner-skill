@@ -292,6 +292,77 @@ class LinearAgentGraphFeatureTests(unittest.TestCase):
             ]
             self.assertGreaterEqual(operations.count("ProjectReadback"), 2)
 
+    def test_graph_apply_spills_oversized_issue_after_linear_rejects_it(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            tmp = Path(raw)
+            spillover_dir = tmp / "spillover"
+            plan = tmp / "graph.json"
+            long_description = "## Objective\n" + ("Preserve full context.\n" * 40)
+            plan.write_text(
+                json.dumps(
+                    {
+                        "project": {
+                            "name": "Spillover Project",
+                            "spilloverDir": str(spillover_dir),
+                        },
+                        "issues": [
+                            {
+                                "key": "MAS-1",
+                                "title": "Oversized context issue",
+                                "description": long_description,
+                            },
+                            {"key": "MAS-2", "title": "Normal issue"},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            state = tmp / "linear-state.json"
+            requests = tmp / "requests.jsonl"
+            state.write_text(
+                json.dumps({"limits": {"issueDescriptionMax": 350}}),
+                encoding="utf-8",
+            )
+            env = {
+                **os.environ,
+                "LINEAR_AGENT_FAKE_STATE": str(state),
+                "LINEAR_AGENT_FAKE_REQUESTS": str(requests),
+                "LINEAR_AGENT_TEST_MODE": "1",
+            }
+
+            result = subprocess.run(
+                [str(BIN), "graph-apply", "--from", str(plan), "--apply-linear", "--json"],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            output = json.loads(result.stdout)
+            self.assertEqual(output["linear"]["summary"]["spillovers"]["created"], 1)
+            spillovers = list(spillover_dir.glob("*.md"))
+            self.assertEqual(len(spillovers), 1)
+            spillover_text = spillovers[0].read_text(encoding="utf-8")
+            self.assertIn(long_description, spillover_text)
+            payload = json.loads(state.read_text(encoding="utf-8"))
+            description = payload["issues"]["MAS-1"]["description"]
+            self.assertIn("Full context spilled to local file", description)
+            self.assertIn("linear-agent-spillover", description)
+
+            readback = subprocess.run(
+                [str(BIN), "graph-readback", "--from", str(plan)],
+                cwd=ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
+                check=False,
+            )
+            self.assertEqual(readback.returncode, 0, readback.stderr)
+
     def test_graph_plan_rejects_blocked_by_cycles(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             tmp = Path(raw)

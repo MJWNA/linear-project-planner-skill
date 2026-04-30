@@ -281,6 +281,12 @@ Supported live operations:
   `reconcile --project`, starting at 250 issues per page and reducing the page
   size if Linear reports query complexity pressure
 
+Issue spillover is reactive. The direct API path must try to create or update
+the Linear issue normally first. Only when Linear rejects the actual issue body
+with a size, length, or character-limit error should it write the full issue
+description to a local spillover Markdown file and retry Linear with a compact
+pointer body. Do not create per-issue local docs preemptively.
+
 Idempotence keys:
 
 - Project: `(team.id, name)`

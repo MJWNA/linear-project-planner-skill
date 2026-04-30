@@ -105,6 +105,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     graph_apply = sub.add_parser("graph-apply")
     graph_apply.add_argument("--from", dest="from_path", required=True)
+    graph_apply.add_argument("--spillover-dir", default="")
     graph_apply.add_argument("--apply-linear", action="store_true")
     graph_apply.add_argument("--json", action="store_true")
     graph_apply.set_defaults(func=cmd_graph_apply)
@@ -460,18 +461,20 @@ def cmd_graph_plan(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def cmd_graph_apply(args: argparse.Namespace) -> dict[str, Any]:
-    plan = load_graph_plan(Path(args.from_path))
+    plan_path = Path(args.from_path)
+    plan = load_graph_plan(plan_path)
+    plan_dict = plan_to_dict(plan)
     if not args.apply_linear:
         return {
             "code": 0,
-            **plan_to_dict(plan),
+            **plan_dict,
             "applied": False,
             "text": render_graph_plan(plan) + "\n\nDry-run only. Re-run with --apply-linear to mutate Linear.",
         }
-    result = apply_graph(plan_to_dict(plan))
+    result = apply_graph(plan_dict, spillover_dir=args.spillover_dir or default_spillover_dir(plan_path, plan_dict))
     return {
         "code": 0,
-        **plan_to_dict(plan),
+        **plan_dict,
         "applied": True,
         "linear": result,
         "text": "Graph applied to Linear and read-back verified.\n" + json.dumps(result["summary"], sort_keys=True),
@@ -496,6 +499,22 @@ def cmd_allocate(args: argparse.Namespace) -> dict[str, Any]:
     if args.ledger:
         insert_allocation(Path(args.ledger), allocation)
     return {"code": 1 if allocation["conflicts"] else 0, **allocation, "text": render_allocation(allocation)}
+
+
+def default_spillover_dir(plan_path: Path, plan: dict[str, Any]) -> Path:
+    project = plan.get("project") or {}
+    configured = project.get("spilloverDir") or project.get("spillover_dir")
+    if configured:
+        return Path(configured)
+    project_slug = slug_for_path(project.get("name") or plan_path.stem)
+    return Path("../.codex-linear-ledgers") / project_slug / "spillover"
+
+
+def slug_for_path(value: str) -> str:
+    slug = "".join(char.lower() if char.isalnum() else "-" for char in value).strip("-")
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug or "linear-project"
 
 
 def cmd_inventory(args: argparse.Namespace) -> dict[str, Any]:
