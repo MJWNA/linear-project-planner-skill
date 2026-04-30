@@ -202,6 +202,18 @@ If Linear rejects issue creation or relationships, do not silently downgrade the
 
 This keeps the project recoverable without pretending the board is more complete than it is.
 
+### Reactive Issue Spillover
+
+Linear remains the first place the issue body is written. The direct GraphQL path only creates local per-issue spillover docs after Linear rejects the actual issue create or update with a size, length, or character-limit error.
+
+When that happens, `linear-agent graph-apply --apply-linear` writes the full issue description to a local Markdown file, retries Linear with a compact pointer body, and includes spillover records in the apply result. By default, spillover files live under:
+
+```txt
+../.codex-linear-ledgers/<project-slug>/spillover/
+```
+
+Use `--spillover-dir <path>` or `project.spilloverDir` in a graph plan when a project needs a different local docs root. Small and normal-sized issues do not get extra local files.
+
 ### Parallel-Agent Operating Model
 
 For agent-heavy projects, the coordinator should not treat "parallel-safe" as a nice-to-have label. If there are two or more independent, unblocked child issues with separate write scopes, the coordinator should dispatch parallel sub-agents and give each one a clear lane.

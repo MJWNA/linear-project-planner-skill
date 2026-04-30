@@ -8,6 +8,19 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
 
 - Nothing yet.
 
+## 4.1.0 - 2026-04-30
+
+- Added reactive Linear issue spillover for direct GraphQL graph apply: issue
+  descriptions are written to Linear normally first, and only size/length
+  rejection errors trigger local Markdown spillover plus a compact retry body.
+- Added `--spillover-dir` and `project.spilloverDir` support so projects can
+  route overflow context into a known local docs root when Linear rejects an
+  oversized issue payload.
+- Added fake Linear limit coverage and graph read-back handling for spillover
+  pointer descriptions.
+- Initialized the dogfood evaluator fake Linear state before apply/read-back so
+  its delivery checks exercise the graph path instead of failing before setup.
+
 ## 4.0.1 - 2026-04-30
 
 - Made direct Linear GraphQL the documented primary path whenever

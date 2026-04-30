@@ -128,6 +128,15 @@ compaction-safe notes.
 
 The graph is applied in phases: validate, dry-run, apply, read-back, then repair/report. Existing objects are matched by stable keys before creating anything new. The local fake transport preserves and verifies issue descriptions, milestone assignment, and links so dogfood tests can prove issue actionability instead of only proving title/dependency shape.
 
+Issue body spillover is reactive, not proactive. `graph-apply --apply-linear`
+first sends the issue description to Linear. If Linear rejects the issue create
+or update with a size, length, or character-limit error, the command writes the
+full issue description to a local Markdown file and retries Linear with a short
+pointer body. The default spillover root is
+`../.codex-linear-ledgers/<project-slug>/spillover/`; graph plans may override
+it with `project.spilloverDir`, and callers may override it with
+`--spillover-dir`.
+
 ## Live API Mode
 
 `graph-apply --apply-linear` mutates `https://api.linear.app/graphql` directly
