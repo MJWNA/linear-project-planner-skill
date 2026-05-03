@@ -19,7 +19,7 @@ from .graph import (
     render_allocation,
     render_graph_plan,
 )
-from .graphql import LinearAgentError, apply_transition, reconcile as graphql_reconcile
+from .graphql import LinearAgentError, LinearClient, apply_graph, apply_transition, readback_graph, reconcile as graphql_reconcile
 from .ledger import (
     append_activity,
     existing_worktree,
@@ -82,6 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     reconcile = sub.add_parser("reconcile")
     add_common(reconcile)
+    reconcile.add_argument("--project", default="")
     reconcile.set_defaults(func=cmd_reconcile)
 
     finalize = sub.add_parser("finalize")
@@ -104,6 +105,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     graph_apply = sub.add_parser("graph-apply")
     graph_apply.add_argument("--from", dest="from_path", required=True)
+    graph_apply.add_argument("--spillover-dir", default="")
     graph_apply.add_argument("--apply-linear", action="store_true")
     graph_apply.add_argument("--json", action="store_true")
     graph_apply.set_defaults(func=cmd_graph_apply)
@@ -130,6 +132,26 @@ def build_parser() -> argparse.ArgumentParser:
     smoke.add_argument("--apply-linear", action="store_true")
     smoke.add_argument("--json", action="store_true")
     smoke.set_defaults(func=cmd_smoke)
+
+    discover = sub.add_parser("discover")
+    discover.add_argument("--classification", required=True)
+    discover.add_argument("--surfaced-by", required=True)
+    discover.add_argument("--reason", required=True)
+    discover.add_argument("--acceptance", required=True)
+    discover.add_argument("--owner", default="")
+    discover.add_argument("--blocks-on", default="")
+    discover.add_argument("--depends-on", default="")
+    discover.add_argument("--create", action="store_true")
+    discover.add_argument("--propose", action="store_true")
+    discover.add_argument("--ledger", required=True)
+    discover.add_argument("--json", action="store_true")
+    discover.set_defaults(func=cmd_discover)
+
+    promote = sub.add_parser("promote")
+    promote.add_argument("--row", required=True)
+    promote.add_argument("--ledger", required=True)
+    promote.add_argument("--json", action="store_true")
+    promote.set_defaults(func=cmd_promote)
 
     return parser
 
@@ -279,6 +301,11 @@ def cmd_handoff(args: argparse.Namespace) -> dict[str, Any]:
 def cmd_reconcile(args: argparse.Namespace) -> dict[str, Any]:
     ledger = Path(args.ledger)
     require_ledger(ledger)
+    if args.project:
+        drift = readback_project_for_reconcile(args.project, ledger, args.agent)
+        code = 1 if drift else 0
+        text = "Project reconcile matched live Linear project." if not drift else "Project reconcile drift: " + json.dumps(drift, sort_keys=True)
+        return {"code": code, "drift": drift, "text": text}
     proc = subprocess.run(
         [sys.executable, "-m", "linear_agent.graphql", "reconcile", "--ledger", str(ledger)],
         text=True,
@@ -434,32 +461,35 @@ def cmd_graph_plan(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def cmd_graph_apply(args: argparse.Namespace) -> dict[str, Any]:
-    plan = load_graph_plan(Path(args.from_path))
+    plan_path = Path(args.from_path)
+    plan = load_graph_plan(plan_path)
+    plan_dict = plan_to_dict(plan)
     if not args.apply_linear:
         return {
             "code": 0,
-            **plan_to_dict(plan),
+            **plan_dict,
             "applied": False,
             "text": render_graph_plan(plan) + "\n\nDry-run only. Re-run with --apply-linear to mutate Linear.",
         }
-    state_path = os.environ.get("LINEAR_AGENT_FAKE_STATE")
-    if not state_path:
-        raise LinearAgentError("graph-apply live GraphQL is intentionally gated; use the Linear MCP or fake transport until live project mutations are configured.")
-    require_fake_test_mode()
-    apply_graph_to_fake_state(Path(state_path), plan_to_dict(plan))
-    return {"code": 0, **plan_to_dict(plan), "applied": True, "text": "Graph applied to fake Linear state."}
+    result = apply_graph(plan_dict, spillover_dir=args.spillover_dir or default_spillover_dir(plan_path, plan_dict))
+    return {
+        "code": 0,
+        **plan_dict,
+        "applied": True,
+        "linear": result,
+        "text": "Graph applied to Linear and read-back verified.\n" + json.dumps(result["summary"], sort_keys=True),
+    }
 
 
 def cmd_graph_readback(args: argparse.Namespace) -> dict[str, Any]:
     plan = load_graph_plan(Path(args.from_path))
-    state_path = os.environ.get("LINEAR_AGENT_FAKE_STATE")
-    if not state_path:
+    if not (os.environ.get("LINEAR_AGENT_FAKE_STATE") or os.environ.get("LINEAR_API_KEY") or os.environ.get("LINEAR_ACCESS_TOKEN")):
         return {"code": 0, **plan_to_dict(plan), "text": "Graph read-back dry-run: plan is structurally valid."}
-    require_fake_test_mode()
-    state = json.loads(Path(state_path).read_text(encoding="utf-8"))
-    drift = graph_drift(state, plan_to_dict(plan))
+    if os.environ.get("LINEAR_AGENT_FAKE_STATE"):
+        require_fake_test_mode()
+    drift = readback_graph(plan_to_dict(plan))
     code = 1 if drift else 0
-    text = "Graph read-back matched fake state." if not drift else "Graph drift: " + json.dumps(drift, sort_keys=True)
+    text = "Graph read-back matched Linear state." if not drift else "Graph drift: " + json.dumps(drift, sort_keys=True)
     return {"code": code, "drift": drift, "text": text}
 
 
@@ -469,6 +499,22 @@ def cmd_allocate(args: argparse.Namespace) -> dict[str, Any]:
     if args.ledger:
         insert_allocation(Path(args.ledger), allocation)
     return {"code": 1 if allocation["conflicts"] else 0, **allocation, "text": render_allocation(allocation)}
+
+
+def default_spillover_dir(plan_path: Path, plan: dict[str, Any]) -> Path:
+    project = plan.get("project") or {}
+    configured = project.get("spilloverDir") or project.get("spillover_dir")
+    if configured:
+        return Path(configured)
+    project_slug = slug_for_path(project.get("name") or plan_path.stem)
+    return Path("../.codex-linear-ledgers") / project_slug / "spillover"
+
+
+def slug_for_path(value: str) -> str:
+    slug = "".join(char.lower() if char.isalnum() else "-" for char in value).strip("-")
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug or "linear-project"
 
 
 def cmd_inventory(args: argparse.Namespace) -> dict[str, Any]:
@@ -511,7 +557,216 @@ def cmd_smoke(args: argparse.Namespace) -> dict[str, Any]:
         }
     if not (os.environ.get("LINEAR_API_KEY") or os.environ.get("LINEAR_ACCESS_TOKEN")):
         raise LinearAgentError("smoke --apply-linear requires Linear credentials or fake transport")
-    return {"code": 0, "project": args.project, "applied": True, "text": f"Smoke apply gate reached for {args.project}."}
+    fixture = ROOT / "tests" / "fixtures" / "linear_graph_plan.json"
+    plan = plan_to_dict(load_graph_plan(fixture))
+    plan["project"]["name"] = args.project
+    for issue in plan["issues"]:
+        issue["title"] = f"{args.project}: {issue['title']}"
+    result = apply_graph(plan)
+    drift = readback_graph(plan)
+    if drift:
+        raise LinearAgentError("live smoke graph read-back drift: " + json.dumps(drift, sort_keys=True))
+    client = LinearClient.from_env()
+    for issue in result["issues"].values():
+        client.archive_issue(issue["identifier"])
+    client.archive_project(result["project"]["id"])
+    return {
+        "code": 0,
+        "project": args.project,
+        "applied": True,
+        "teardown": "archived",
+        "linear": result,
+        "text": f"Smoke graph applied, read back, and archived for {args.project}.",
+    }
+
+
+def cmd_discover(args: argparse.Namespace) -> dict[str, Any]:
+    ledger = Path(args.ledger)
+    require_ledger(ledger)
+    row_id = "DISC-" + timestamp().replace(":", "").replace("-", "").replace("+", "")
+    mode = "Create" if args.create else "Propose"
+    identifier = ""
+    if args.create:
+        client = LinearClient.from_env()
+        surfaced = client.issue(args.surfaced_by)
+        team = surfaced["team"]
+        project = surfaced.get("project") or {}
+        if not project.get("id"):
+            raise LinearAgentError(f"Cannot create discovery issue: {args.surfaced_by} has no project")
+        label_map: dict[str, dict[str, Any]] = {}
+        for name in ("continuous-discovery", "agent-ready"):
+            _, label = client.ensure_label(team["id"], name)
+            label_map[name] = label
+        title = f"[{args.classification}] {args.reason[:90]}"
+        body = discovery_body(args)
+        status, created = client.ensure_issue(
+            team["id"],
+            project["id"],
+            {
+                "key": row_id,
+                "title": title,
+                "description": body,
+                "labels": ["continuous-discovery", "agent-ready"],
+            },
+            label_map,
+            {},
+            {},
+        )
+        client.ensure_relation(created, surfaced, "related")
+        if args.blocks_on:
+            client.ensure_relation(created, client.issue(args.blocks_on), "blocks")
+        if args.depends_on:
+            client.ensure_relation(client.issue(args.depends_on), created, "blocks")
+        identifier = created.get("identifier", "")
+        mode = f"Create:{identifier}:{status}"
+    append_discovery_row(ledger, row_id, args, mode, identifier)
+    return {
+        "code": 0,
+        "row": row_id,
+        "identifier": identifier,
+        "created": bool(identifier),
+        "text": f"Discovery row recorded: {row_id}" + (f" -> {identifier}" if identifier else ""),
+    }
+
+
+def cmd_promote(args: argparse.Namespace) -> dict[str, Any]:
+    ledger = Path(args.ledger)
+    require_ledger(ledger)
+    row = find_discovery_row(ledger, args.row)
+    if not row:
+        raise ValueError(f"Discovery row not found: {args.row}")
+    if row["mode"].startswith("Create:"):
+        return {"code": 0, "row": args.row, "text": f"Discovery row already created: {row['mode']}"}
+    ns = argparse.Namespace(
+        classification=row["classification"],
+        surfaced_by=row["surfaced_by"],
+        reason=row["reason"],
+        acceptance=row["acceptance"],
+        owner=row["owner"],
+        blocks_on="",
+        depends_on=row["depends_on"],
+        create=True,
+        propose=False,
+        ledger=str(ledger),
+        json=args.json,
+    )
+    return cmd_discover(ns)
+
+
+def discovery_body(args: argparse.Namespace) -> str:
+    return "\n".join(
+        [
+            "## Continuous Discovery Issue Candidate",
+            f"Classification: {args.classification}",
+            f"Surfaced by: {args.surfaced_by}",
+            "",
+            "## Why Discovered",
+            args.reason,
+            "",
+            "## Blocks / Depends On",
+            f"Blocks on: {args.blocks_on or 'n/a'}",
+            f"Depends on: {args.depends_on or 'n/a'}",
+            "",
+            "## Owner Workstream",
+            args.owner or "unassigned",
+            "",
+            "## Acceptance Criteria",
+            args.acceptance,
+            "",
+            "## Future-Agent Context",
+            "Created by linear-agent discover; reconcile the ledger after completion.",
+        ]
+    )
+
+
+def append_discovery_row(ledger: Path, row_id: str, args: argparse.Namespace, mode: str, identifier: str) -> None:
+    relation = args.blocks_on or args.depends_on or "n/a"
+    row = (
+        f"| {timestamp()} | {escape_cell(args.classification)} | {escape_cell(args.reason)} | "
+        f"{escape_cell(args.surfaced_by)} | {mode} | {escape_cell(relation)} | "
+        f"{escape_cell(args.owner or 'unassigned')} | {escape_cell(args.acceptance)} | "
+        f"{row_id} | {escape_cell(identifier or 'proposed')} |"
+    )
+    insert_table_row(ledger, "## Continuous Issue Discovery Log", row)
+    append_activity(ledger, f"Continuous discovery {row_id} recorded. Mode: {mode}.")
+    write_state_sidecar(ledger)
+
+
+def find_discovery_row(ledger: Path, row_id: str) -> dict[str, str] | None:
+    for line in ledger.read_text(encoding="utf-8").splitlines():
+        if row_id not in line or not line.startswith("|"):
+            continue
+        cells = [cell.strip().replace("\\|", "|") for cell in line.strip("|").split("|")]
+        if len(cells) < 10:
+            continue
+        return {
+            "classification": cells[1],
+            "reason": cells[2],
+            "surfaced_by": cells[3],
+            "mode": cells[4],
+            "depends_on": cells[5] if cells[5] != "n/a" else "",
+            "owner": cells[6],
+            "acceptance": cells[7],
+        }
+    return None
+
+
+def insert_table_row(ledger: Path, heading: str, row: str) -> None:
+    lines = ledger.read_text(encoding="utf-8").splitlines()
+    out: list[str] = []
+    in_section = False
+    inserted = False
+    for line in lines:
+        if line == heading:
+            in_section = True
+            out.append(line)
+            continue
+        if in_section and line.startswith("| TBD |"):
+            if not inserted:
+                out.append(row)
+                inserted = True
+            continue
+        if in_section and line.startswith("## ") and not inserted:
+            out.append(row)
+            inserted = True
+            in_section = False
+        out.append(line)
+    if not inserted:
+        out.append(row)
+    ledger.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
+def escape_cell(value: str) -> str:
+    return str(value).replace("|", "\\|").replace("\n", "<br>")
+
+
+def readback_project_for_reconcile(project_name_or_id: str, ledger: Path, agent: str) -> list[dict[str, Any]]:
+    client = LinearClient.from_env()
+    project_id = project_name_or_id
+    if not project_name_or_id.startswith("http") and "-" not in project_name_or_id[:12]:
+        team = client.resolve_team({})
+        project = client.project_by_name(team["id"], project_name_or_id)
+        if not project:
+            raise LinearAgentError(f"Linear project not found: {project_name_or_id}")
+        project_id = project["id"]
+    read_back = client.project_readback(project_id)
+    live = {issue["identifier"]: issue for issue in read_back.get("issues", {}).get("nodes", [])}
+    rows = {row.issue: row for row in parse_issue_rows(ledger)}
+    drift: list[dict[str, Any]] = []
+    for identifier, issue in live.items():
+        state = issue.get("state", {}).get("name", "")
+        if identifier not in rows:
+            drift.append({"issue": identifier, "classification": "in-linear-but-not-in-ledger", "state": state})
+            upsert_issue_row(ledger, identifier, state, "agent:blocked", agent, "", "Reconciled from Linear project scan: not previously in ledger")
+        elif rows[identifier].linear_status != state:
+            drift.append({"issue": identifier, "classification": "ledger-drifted", "ledger": rows[identifier].linear_status, "linear": state})
+            upsert_issue_row(ledger, identifier, state, rows[identifier].agent_state, agent, rows[identifier].worktree, f"Project scan reconciled status from {rows[identifier].linear_status} to {state}")
+    for identifier in rows:
+        if identifier not in live:
+            drift.append({"issue": identifier, "classification": "in-ledger-but-not-in-linear"})
+    append_activity(ledger, f"Project-scan reconcile for {project_name_or_id}: {len(drift)} drift rows.")
+    write_state_sidecar(ledger)
+    return drift
 
 
 def print_json_or_text(args: argparse.Namespace, payload: dict[str, Any], text: str) -> None:
@@ -522,7 +777,15 @@ def print_json_or_text(args: argparse.Namespace, payload: dict[str, Any], text: 
 
 
 def mcp_plan(action: str, issue: str, state: str, comment: str) -> str:
-    return f"""Required Linear MCP actions:
+    direct_mode = (
+        "Direct Linear API primary path is available. Re-run this transition with "
+        "`--apply-linear` to mutate Linear through https://api.linear.app/graphql."
+        if os.environ.get("LINEAR_API_KEY") or os.environ.get("LINEAR_ACCESS_TOKEN")
+        else "Direct Linear API primary path requires LINEAR_API_KEY or LINEAR_ACCESS_TOKEN."
+    )
+    return f"""{direct_mode}
+
+Fallback Linear app/MCP/manual actions when direct API credentials are unavailable or an explicit connector workflow was requested:
 1. _save_issue(id="{issue}", state="{state}")
 2. _save_comment(issueId="{issue}", body=<comment body below>)
 3. Verify with _list_issues(query="{issue}") and confirm state="{state}".
@@ -536,7 +799,7 @@ Comment body:
 
 
 def handoff_plan(comment: str) -> str:
-    return f"""Required Linear MCP actions:
+    return f"""Fallback Linear app/MCP/manual actions:
 1. _save_comment(issueId="<active-or-operating-guide-issue>", body=<comment body below>)
 2. Verify with _list_comments(issueId="<active-or-operating-guide-issue>") and confirm the handoff comment exists.
 3. Reconcile with _list_issues(project="<project-name>") before choosing the next issue.
@@ -550,7 +813,7 @@ Comment body:
 
 
 def finalize_plan(comment: str) -> str:
-    return f"""Required Linear MCP actions:
+    return f"""Fallback Linear app/MCP/manual actions:
 1. _save_comment(issueId="<operating-guide-or-final-verification-issue>", body=<comment body below>)
 2. Verify with Linear project read-back that no Todo or In Progress issues remain.
 3. If any unfinished issue remains, reopen the ledger with linear-agent start/block/handoff before calling the project complete.
@@ -617,7 +880,7 @@ def apply_graph_to_fake_state(path: Path, plan: dict[str, Any]) -> None:
                 "id": current.get("id", f"issue-{key.lower()}"),
                 "identifier": key,
                 "title": issue["title"],
-                "description": current.get("description", ""),
+                "description": issue.get("description", current.get("description", "")),
                 "url": current.get("url", f"https://linear.app/example/{key}"),
                 "state": current.get("state", {"id": "todo", "name": "Todo", "type": "unstarted"}),
                 "team": current.get("team", {"id": "team-mas", "key": "MAS", "name": "Master Group Holdings"}),
@@ -629,6 +892,8 @@ def apply_graph_to_fake_state(path: Path, plan: dict[str, Any]) -> None:
                 "updatedAt": timestamp(),
                 "labels": issue.get("labels", []),
                 "parent": issue.get("parent", ""),
+                "milestone": issue.get("milestone", ""),
+                "links": issue.get("links", []),
                 "blocks": issue.get("blocks", []),
                 "blockedBy": issue.get("blocked_by", []),
             }
@@ -673,15 +938,21 @@ def graph_drift(state: dict[str, Any], plan: dict[str, Any]) -> list[dict[str, A
             continue
         expected_fields = {
             "title": issue["title"],
+            "description": issue.get("description", ""),
             "labels": sorted(issue.get("labels", [])),
             "parent": issue.get("parent", ""),
+            "milestone": issue.get("milestone", ""),
+            "links": sorted(issue.get("links", []), key=lambda item: (item.get("title", ""), item.get("url", ""))),
             "blocks": sorted(issue.get("blocks", [])),
             "blockedBy": sorted(issue.get("blocked_by", [])),
         }
         actual_fields = {
             "title": actual.get("title", ""),
+            "description": actual.get("description", ""),
             "labels": sorted(actual.get("labels", [])),
             "parent": actual.get("parent", ""),
+            "milestone": actual.get("milestone", ""),
+            "links": sorted(actual.get("links", []), key=lambda item: (item.get("title", ""), item.get("url", ""))),
             "blocks": sorted(actual.get("blocks", [])),
             "blockedBy": sorted(actual.get("blockedBy", [])),
         }

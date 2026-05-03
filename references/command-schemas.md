@@ -1,12 +1,21 @@
 # Linear Project Command Schemas
 
-This reference describes the stable command contract behind the `linear-agent`
-CLI and a future structured tool or MCP surface. Keep the shell CLI compatible;
-move implementation behind these contracts in small, tested steps.
+This reference describes the stable command contract behind the implemented
+`linear-agent` CLI and any future structured tool or MCP surface. Keep the
+shell CLI compatible; move implementation behind these contracts in small,
+tested steps.
 
 ## Namespace
 
-Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
+Use `linear_project.*` for function-tool, MCP, or tool-search metadata. The
+shell CLI is the implemented reference surface.
+
+Direct Linear GraphQL is the primary implementation path when credentials are
+available. MCP or connector tools should wrap this contract only when they call
+the same API behavior, when the runtime has no direct API credentials, or when
+the user explicitly requests the connector. They are also the required fallback
+when direct API execution is unavailable, blocks or rejects a valid operation,
+lacks the needed operation, or fails read-back confirmation.
 
 | Tool | Purpose | Side effects |
 |---|---|---|
@@ -24,6 +33,8 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
 | `linear_project.allocate` | Convert graph and write scopes into parallel agent lanes. | Writes ledger allocation rows only when requested. |
 | `linear_project.inventory` | Draft production/sink gate matrix from a repo scan. | Reads local files only. |
 | `linear_project.smoke` | Run dry-run or secret-gated live Linear smoke checks. | Writes Linear only with explicit apply mode and credentials. |
+| `linear_project.discover` | Capture Continuous Issue Discovery as a proposed ledger row or live Linear issue. | Writes ledger; writes Linear only with `--create` and credentials. |
+| `linear_project.promote` | Promote a proposed Continuous Issue Discovery row into a live Linear issue. | Writes Linear and records the created identifier in the ledger. |
 
 ## Shared Parameters
 
@@ -35,6 +46,36 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
 - `apply_linear`: explicit opt-in for direct Linear writes.
 - `json`: emit stable machine-readable output.
 - `from`: path to a graph plan file for graph and allocation commands.
+- `connector_fallback`: required when credentials are missing, direct API
+  lacks the requested operation, API execution is unavailable or blocked,
+  read-back cannot confirm the result, or the user explicitly asks for the
+  Linear app or MCP connector.
+
+## Planning Output Modes
+
+Normal-mode planning output should stay compact but recoverable:
+
+- project descriptions carry goal, source of truth, scope, non-scope,
+  workstreams, dependency/blocker policy, Continuous Issue Discovery,
+  verification, and handoff fields when relevant;
+- issue bodies carry objective, context, scope, dependencies/blockers,
+  acceptance criteria, verification, and future-agent notes.
+
+Expanded-mode planning output should behave like a delivery charter:
+
+- project descriptions carry operating mode, companion ledger path, local docs
+  root, phase, workstream map, dependency policy, research-to-issue policy,
+  Continuous Issue Discovery policy, verification policy, handoff policy, and
+  coordinator responsibilities;
+- issue bodies carry background, why it matters, inputs, owned/non-owned scope,
+  dependencies, blockers, working instructions, expected outputs, acceptance
+  criteria, verification, handoff notes, follow-up candidates, and required
+  ledger/local-doc/dependency-map updates where relevant.
+
+Both modes support emergent work capture. Created or proposed issue records
+should preserve discovery reason, surfacing issue/workstream, relationship to
+blockers/dependencies, owner phase/workstream, acceptance criteria, and
+compaction-safe notes.
 
 ## Safety Contract
 
@@ -48,7 +89,7 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
 - `graph-apply` must be idempotent and dry-run by default.
 - `graph-readback` reports drift without mutating unless paired with explicit apply.
 - `allocate` refuses or reports overlapping write sets before dispatch.
-- `smoke` never runs on normal PRs or forks; live mode is manual and secret-gated.
+- `smoke` never runs on normal PRs or forks; live mode is scheduled/manual and secret-gated.
 
 ## Stable Exit Codes
 
@@ -69,7 +110,16 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
     {
       "key": "MAS-435",
       "title": "Define full Linear graph plan schema and command contract",
+      "description": "## Objective\nDefine the schema.\n\n## Acceptance Criteria\n- Schema is documented.\n\n## Verification\nRun graph-plan.",
       "parent": "",
+      "milestone": "Linear Graph Automation",
+      "labels": ["agent-ready", "serial-required"],
+      "links": [
+        {
+          "title": "Command schemas",
+          "url": "file://references/command-schemas.md"
+        }
+      ],
       "blockedBy": [],
       "blocks": ["MAS-436"],
       "writeSet": ["references/command-schemas.md"],
@@ -79,7 +129,49 @@ Use `linear_project.*` for future function-tool, MCP, or tool-search metadata.
 }
 ```
 
-The graph is applied in phases: validate, dry-run, apply, read-back, then repair/report. Existing objects are matched by stable keys before creating anything new.
+The graph is applied in phases: validate, dry-run, apply, read-back, then repair/report. Existing objects are matched by stable keys before creating anything new. The local fake transport preserves and verifies issue descriptions, milestone assignment, and links so dogfood tests can prove issue actionability instead of only proving title/dependency shape.
+
+Issue body spillover is reactive, not proactive. `graph-apply --apply-linear`
+first sends the issue description to Linear. If Linear rejects the issue create
+or update with a size, length, or character-limit error, the command writes the
+full issue description to a local Markdown file and retries Linear with a short
+pointer body. The default spillover root is
+`../.codex-linear-ledgers/<project-slug>/spillover/`; graph plans may override
+it with `project.spilloverDir`, and callers may override it with
+`--spillover-dir`.
+
+## Live API Mode
+
+`graph-apply --apply-linear` mutates `https://api.linear.app/graphql` directly
+when `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` is present. It applies the graph
+in this order:
+
+1. Project
+2. Labels
+3. Milestones
+4. Parent issues, using `issueBatchCreate` when multiple new parents are absent
+5. Child issues, using `issueBatchCreate` when parents are already known
+6. Relations
+7. Attachments
+
+Idempotence keys:
+
+| Entity | Lookup key | On create | On match | On drift |
+|---|---|---|---|---|
+| Project | `(team.id, name)` | create | reuse | update changed fields |
+| Milestone | `(project.id, name)` | create | reuse | update changed fields |
+| Label | `(team.id, name)` | create | reuse | update explicit color/description drift |
+| Issue | explicit `identifier`; else `(team.id, title)` | create or batch-create | reuse | update body/labels/parent/milestone |
+| Relation | `(issueId, relatedIssueId, type)` | create | reuse | n/a |
+| Attachment | `(issueId, url)` | create with source metadata | reuse | update title drift |
+
+Every mutation checks `success`, reads back the affected graph, and fails closed
+with recovery guidance when confirmation disagrees. Linear attachment URLs must
+be allowed HTTP(S) URLs; keep local file paths in issue bodies or ledgers.
+Project scans start at 250 issues per page and follow cursor pagination until
+`pageInfo.hasNextPage` is false. If Linear reports that the rich read-back query
+is too complex, the implementation must reduce page size and continue the scan
+rather than silently dropping later pages.
 
 ## Tool Description Checklist
 

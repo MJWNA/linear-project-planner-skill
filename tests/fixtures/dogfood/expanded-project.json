@@ -1,0 +1,140 @@
+{
+  "project": {
+    "name": "[SANDBOX] Dogfood Expanded - Agent Workflow Redesign",
+    "mode": "expanded",
+    "brief": "Create an expanded-mode project to redesign an agent-heavy workflow with deep research, project principles, companion docs, dependency map, QA plan, handoff docs, and multiple issue types.",
+    "ledgerPath": "../.codex-linear-ledgers/sandbox-dogfood-expanded/EXECUTION.md",
+    "localDocsRoot": "docs/expanded-mode/sandbox-dogfood-expanded/",
+    "principles": [
+      "Expanded mode is opt-in and must not contaminate baseline mode.",
+      "Research and provenance are planned work, not chat-only notes.",
+      "Coordinator owns Linear state, dependency map, QA plan, and final integration."
+    ],
+    "requiredArtifacts": [
+      "research-dossier",
+      "project-principles",
+      "dependency-map",
+      "qa-plan",
+      "agent-briefs",
+      "handoff"
+    ]
+  },
+  "labels": [
+    "agent-ready",
+    "parallel-safe",
+    "serial-required",
+    "overlap-zone",
+    "needs-human-review",
+    "verification-missing",
+    "continuous-discovery"
+  ],
+  "milestones": [
+    "Mode Gate & Baseline Protection",
+    "Research & Provenance",
+    "Dependency Mapping",
+    "Implementation",
+    "QA, Dogfood & Handoff"
+  ],
+  "issues": [
+    {
+      "key": "DOG-E-001",
+      "title": "Guide: Agent Operating Guide",
+      "labels": ["agent-ready"],
+      "milestone": "Mode Gate & Baseline Protection",
+      "description": "## Objective\nDefine expanded-mode operating rules, source of truth, baseline protection, and first safe issue.\n\n## Background Context\nThis project deliberately exercises expanded mode.\n\n## Owned Scope\n- Operating guide and coordinator responsibilities.\n\n## Non-Owned Scope\n- Runtime implementation and release metadata.\n\n## Acceptance Criteria\n- Original prompt is preserved.\n- Local docs root and ledger path are named.\n- Baseline contamination rules are explicit.\n\n## Verification Requirements\nRead back project graph, ledger, and local docs plan.\n\n## Handoff / Context Recovery Notes\nFuture agents start from this guide, the ledger, and DOG-E-003 dependency map.",
+      "links": [
+        {"title": "Expanded-mode reference", "url": "file://references/expanded-mode.md"},
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-expanded/EXECUTION.md"}
+      ],
+      "writeSet": ["../.codex-linear-ledgers/sandbox-dogfood-expanded/EXECUTION.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-E-002",
+      "title": "Research current agent workflow and OpenAI/Codex patterns",
+      "parent": "DOG-E-001",
+      "labels": ["agent-ready", "parallel-safe"],
+      "milestone": "Research & Provenance",
+      "description": "## Objective\nCreate a research dossier grounding the workflow redesign in local evidence and official OpenAI/Codex docs.\n\n## Background Context\nExpanded mode requires source-backed planning before implementation.\n\n## Inputs / Required Reading\n- Original brief\n- SKILL.md\n- references/expanded-mode.md\n- Official OpenAI Codex docs for skills, AGENTS.md, subagents, and compaction\n\n## Owned Scope\n- Research dossier only.\n\n## Non-Owned Scope\n- Dependency map and implementation edits.\n\n## Acceptance Criteria\n- Source-backed facts and project inferences are separated.\n- OpenAI/Codex URLs or Context7 library IDs are recorded.\n- Refresh triggers are documented.\n\n## Verification Requirements\nReview the dossier for source scope, source links, and implications.\n\n## Required Updates\nUpdate the ledger research row and link the dossier.",
+      "links": [
+        {"title": "Research dossier template", "url": "file://templates/expanded-mode/research-dossier.md"},
+        {"title": "OpenAI Codex skills docs", "url": "https://developers.openai.com/codex/skills"}
+      ],
+      "blocks": ["DOG-E-003", "DOG-E-004"],
+      "writeSet": ["docs/expanded-mode/sandbox-dogfood-expanded/research/openai-codex-patterns.md"]
+    },
+    {
+      "key": "DOG-E-003",
+      "title": "Build dependency map and parallel allocation plan",
+      "parent": "DOG-E-001",
+      "blockedBy": ["DOG-E-002"],
+      "labels": ["agent-ready", "serial-required"],
+      "milestone": "Dependency Mapping",
+      "description": "## Objective\nCreate the dependency map, edge rationale, parallel batches, and serial gates.\n\n## Background Context\nParallel implementation must wait for explicit ownership and verification gates.\n\n## Inputs / Required Reading\n- Research dossier\n- Expanded-mode dependency map template\n- Current issue graph\n\n## Owned Scope\n- Dependency map and allocation table.\n\n## Non-Owned Scope\n- Implementation edits.\n\n## Acceptance Criteria\n- Parent workstreams and child issues are mapped.\n- Edges identify blocker, dependency, human-gate, and integration-zone relationships.\n- Parallel-safe batches name non-overlap rationale.\n\n## Verification Requirements\nRun `linear-agent allocate` and compare output with dependency map.\n\n## Required Updates\nUpdate ledger Safe Parallelism Decisions and dependency-map doc.",
+      "links": [
+        {"title": "Dependency map template", "url": "file://templates/expanded-mode/dependency-map.md"}
+      ],
+      "blocks": ["DOG-E-005", "DOG-E-006"],
+      "writeSet": ["docs/expanded-mode/sandbox-dogfood-expanded/dependencies/dependency-map.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-E-004",
+      "title": "Create project principles and QA plan",
+      "parent": "DOG-E-001",
+      "blockedBy": ["DOG-E-002"],
+      "labels": ["agent-ready", "parallel-safe"],
+      "milestone": "Dependency Mapping",
+      "description": "## Objective\nCreate the project principles document and QA plan.\n\n## Background Context\nThis expanded project needs durable decision rules and verification gates.\n\n## Inputs / Required Reading\n- Research dossier\n- templates/project-principles.md\n- templates/expanded-mode/qa-plan.md\n\n## Owned Scope\n- Principles document and QA plan.\n\n## Non-Owned Scope\n- Dependency map edge table and implementation work.\n\n## Acceptance Criteria\n- Non-negotiables, quality bar, anti-goals, and amendment rules are present.\n- QA plan includes baseline checks, issue checks, final read-back, and handoff gate.\n\n## Verification Requirements\nReview for required sections and link both artifacts from the ledger.\n\n## Required Updates\nUpdate the ledger principles surface and verification matrix references.",
+      "links": [
+        {"title": "Principles template", "url": "file://templates/project-principles.md"},
+        {"title": "QA plan template", "url": "file://templates/expanded-mode/qa-plan.md"}
+      ],
+      "blocks": ["DOG-E-007"],
+      "writeSet": [
+        "docs/expanded-mode/sandbox-dogfood-expanded/project-principles.md",
+        "docs/expanded-mode/sandbox-dogfood-expanded/qa/qa-plan.md"
+      ]
+    },
+    {
+      "key": "DOG-E-005",
+      "title": "Implement workflow reference updates",
+      "parent": "DOG-E-001",
+      "blockedBy": ["DOG-E-003"],
+      "labels": ["agent-ready", "parallel-safe"],
+      "milestone": "Implementation",
+      "description": "## Objective\nUpdate references that describe the redesigned agent workflow.\n\n## Background Context\nThis lane owns reference docs only and can run beside template updates.\n\n## Owned Scope\n- references/workflow-related docs.\n\n## Non-Owned Scope\n- Templates, release metadata, installed runtime copy.\n\n## Acceptance Criteria\n- Checkpoint model is represented in the reference.\n- Source material rereading is phase-specific.\n- Baseline mode remains concise.\n\n## Verification Requirements\nRun front-door and dogfood evaluators.\n\n## Handoff / Context Recovery Notes\nCoordinator integrates after DOG-E-006.",
+      "links": [
+        {"title": "Dependency map", "url": "file://docs/expanded-mode/sandbox-dogfood-expanded/dependencies/dependency-map.md"}
+      ],
+      "writeSet": ["references/execution-hygiene.md", "references/project-structure.md"]
+    },
+    {
+      "key": "DOG-E-006",
+      "title": "Implement template and fixture updates",
+      "parent": "DOG-E-001",
+      "blockedBy": ["DOG-E-003"],
+      "labels": ["agent-ready", "parallel-safe"],
+      "milestone": "Implementation",
+      "description": "## Objective\nUpdate templates and fixtures so future projects preserve checkpoint and handoff evidence.\n\n## Background Context\nThis lane owns templates and dogfood fixtures only.\n\n## Owned Scope\n- templates/** and tests/fixtures/**.\n\n## Non-Owned Scope\n- Runtime CLI and release metadata.\n\n## Acceptance Criteria\n- Companion ledger template includes source-material checkpoint log.\n- Dogfood fixtures cover normal, expanded, and continuous-discovery modes.\n\n## Verification Requirements\nRun dogfood evaluator and shell regression tests.\n\n## Required Updates\nUpdate ledger and dependency map with any shape changes.",
+      "links": [
+        {"title": "QA plan", "url": "file://docs/expanded-mode/sandbox-dogfood-expanded/qa/qa-plan.md"}
+      ],
+      "writeSet": ["templates/**", "tests/fixtures/dogfood/**"]
+    },
+    {
+      "key": "DOG-E-007",
+      "title": "Dogfood, final QA, and handoff",
+      "parent": "DOG-E-001",
+      "blockedBy": ["DOG-E-004", "DOG-E-005", "DOG-E-006"],
+      "labels": ["agent-ready", "serial-required", "needs-human-review"],
+      "milestone": "QA, Dogfood & Handoff",
+      "description": "## Objective\nRun live dogfood, final QA, and create handoff evidence.\n\n## Background Context\nExpanded-mode changes require proof that baseline behavior stayed intact.\n\n## Inputs / Required Reading\n- QA plan\n- Dependency map\n- Full evaluator output\n\n## Owned Scope\n- Dogfood evidence and handoff document.\n\n## Non-Owned Scope\n- New implementation changes after QA starts unless a blocker is discovered.\n\n## Acceptance Criteria\n- Baseline tests pass.\n- Dogfood evaluator passes.\n- Remaining risks and next iteration are documented.\n\n## Verification Requirements\nRun all repo tests/evaluators and read back fake Linear graph.\n\n## Required Updates\nUpdate handoff doc, ledger, and final completion comment.",
+      "links": [
+        {"title": "Handoff template", "url": "file://templates/expanded-mode/handoff.md"}
+      ],
+      "writeSet": ["docs/expanded-mode/sandbox-dogfood-expanded/handoff/final-handoff.md"],
+      "serial": true
+    }
+  ]
+}

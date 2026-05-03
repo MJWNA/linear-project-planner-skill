@@ -76,6 +76,38 @@ repo changed.
 - Do not commit local execution ledgers, private Linear exports, credentials,
   screenshots with private workspace data, or temporary smoke-test artifacts.
 
+## GitHub Release Workflow
+
+For public changes that should be visible to future users, do not stop at a
+merged PR. Verify that GitHub has a current tag and Release, and that
+`CHANGELOG.md` no longer leaves shipped work under `Unreleased`.
+
+Use a clean release branch or worktree from `origin/main` when the local checkout
+is dirty, ahead, behind, or contains unrelated local commits. Keep implementation
+PRs separate from release-metadata PRs when that avoids mixing unrelated changes.
+
+Release checklist:
+
+1. Confirm the public state with `gh release list --repo MJWNA/linear-project-planner-skill --limit 5`, `gh repo view ... --json latestRelease`, `git tag --sort=-creatordate`, and `git log --oneline --decorate origin/main -5`.
+2. Move shipped bullets from `## Unreleased` into a dated SemVer section, and
+   update `VERSION` to the same tag number.
+3. Run the relevant verification suite before creating or merging the release
+   PR.
+4. Open a PR, wait for GitHub checks to pass, then merge.
+5. Tag the merged `origin/main` commit, push the tag, and create a GitHub
+   Release marked as latest.
+6. Read back `gh release list` and `gh repo view ... --json latestRelease` to
+   confirm GitHub shows the intended release as latest.
+7. Install from the released repo state with `./install.sh --with-docs` and
+   verify with `./install.sh --check` when runtime skill behavior changed.
+
+When creating GitHub Releases from the shell, prefer `--notes-file` over inline
+`--notes` if the notes contain backticks or shell-looking text. Inline backticks
+can be interpreted by the shell before `gh` receives the release body.
+
+If `shellcheck` is unavailable locally, record that clearly, but still run the
+other local checks and rely on GitHub's analyze/test checks before merging.
+
 ## Updating The Local Installed Skill
 
 Whenever a change is intended to affect how Codex uses the skill, update the

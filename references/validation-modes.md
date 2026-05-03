@@ -50,6 +50,39 @@ When enabled:
 Do not mutate the evaluator mid-loop unless the issue is explicitly to repair an
 invalid evaluator.
 
+## Ralph Wiggum / Auto-Research Loop
+
+For expanded-mode or explicitly recursive projects, use two related but
+separate loops:
+
+- Ralph Wiggum loop: repeated review and correction until deterministic and
+  inferential reviewers are satisfied.
+- Auto-research loop: metric-driven optimization with a frozen evaluator,
+  one focused change, benchmark/check, keep or revert, and learning capture.
+
+Before the loop starts, record the loop type, source scope, frozen evaluator
+set, issue-creation threshold, and stop condition in the ledger or verification
+matrix. A miss becomes a Linear issue only when it affects correctness,
+acceptance criteria, dependency order, verification, or future-agent recovery.
+Otherwise, record it as a learning or issue candidate.
+
+Return failed passes to the smallest responsible issue rather than restarting
+the whole project. Do not mark an issue `Done` until frozen deterministic
+sensors pass, inferential review is resolved or explicitly deferred, Linear
+read-back is clean, and the ledger/handoff agree.
+
+## Sensor Timing
+
+Use sensors as an outer-harness feedback stack:
+
+| Phase | Computational Sensors | Inferential Sensors |
+|---|---|---|
+| Before planning | Graph/schema/template checks | Source-scope and problem-framing review |
+| Before issue creation | `graph-plan`, dependency cycle checks | Issue actionability and future-agent recovery review |
+| Before implementation | Dirty tree, write-scope, dependency checks | Ownership and sequencing review |
+| Before Done | Tests, evaluators, syntax/YAML, read-back | Acceptance evidence and residual-risk review |
+| Before closeout | `reconcile`, install checks, release checks | Handoff, proof-of-work, and baseline-contamination review |
+
 ## Good Evaluators
 
 - test pass/fail

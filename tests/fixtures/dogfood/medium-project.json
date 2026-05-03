@@ -1,0 +1,97 @@
+{
+  "project": {
+    "name": "[SANDBOX] Dogfood Medium - Profile Export Flow",
+    "mode": "normal",
+    "brief": "Add a profile export flow with backend endpoint, frontend trigger, tests, and release verification. Preserve existing auth and data semantics.",
+    "ledgerPath": "../.codex-linear-ledgers/sandbox-dogfood-medium/EXECUTION.md",
+    "principles": [
+      "Preserve existing auth boundaries.",
+      "Split backend, frontend, and verification into independently reviewable work.",
+      "Make parallel lanes explicit only when write scopes do not overlap."
+    ]
+  },
+  "labels": [
+    "agent-ready",
+    "parallel-safe",
+    "serial-required",
+    "touches-auth",
+    "touches-frontend",
+    "verification-missing",
+    "continuous-discovery"
+  ],
+  "milestones": [
+    "Agent Bootstrap & Triage",
+    "Implementation",
+    "Final Verification, Release & Monitoring"
+  ],
+  "issues": [
+    {
+      "key": "DOG-M-001",
+      "title": "Guide: Agent Operating Guide",
+      "labels": ["agent-ready"],
+      "milestone": "Agent Bootstrap & Triage",
+      "description": "## Objective\nDefine dependency order, auth boundaries, safe parallelism, and ledger recovery for the profile export flow.\n\n## Context\nBackend and frontend can proceed in parallel after the endpoint contract is stable.\n\n## Acceptance Criteria\n- Original brief and non-scope are preserved.\n- Parallel-safe lanes name owned write scopes.\n- Continuous Discovery routes blockers and auth defects into new issues.\n\n## Verification\nRead back graph, dependencies, and ledger before implementation.\n\n## Notes For Future Agents\nStart with DOG-M-003 and DOG-M-004 only after DOG-M-002 defines the contract.",
+      "links": [
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-medium/EXECUTION.md"}
+      ],
+      "writeSet": ["../.codex-linear-ledgers/sandbox-dogfood-medium/EXECUTION.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-M-002",
+      "title": "Define profile export contract and auth expectations",
+      "parent": "DOG-M-001",
+      "labels": ["agent-ready", "serial-required", "touches-auth"],
+      "milestone": "Agent Bootstrap & Triage",
+      "description": "## Objective\nSpecify the export endpoint contract and auth checks before implementation.\n\n## Context\nThe backend and frontend lanes depend on this contract.\n\n## Scope\n- Owned work: API contract note and acceptance criteria.\n- Non-scope: implementing endpoint or UI.\n\n## Dependencies / Blockers\n- Blocks: DOG-M-003, DOG-M-004.\n\n## Acceptance Criteria\n- Endpoint request and response are named.\n- Auth and user-data ownership expectations are explicit.\n- Verification expectations are attached to downstream issues.\n\n## Verification\nReview against local auth conventions and record any docs lookup requirement.\n\n## Notes For Future Agents\nIf auth semantics are unclear, create a Decision required issue before implementation.",
+      "links": [
+        {"title": "Auth conventions", "url": "file://docs/auth.md"}
+      ],
+      "blocks": ["DOG-M-003", "DOG-M-004"],
+      "writeSet": ["docs/profile-export-contract.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-M-003",
+      "title": "Implement backend profile export endpoint",
+      "parent": "DOG-M-001",
+      "blockedBy": ["DOG-M-002"],
+      "labels": ["agent-ready", "parallel-safe", "touches-auth"],
+      "milestone": "Implementation",
+      "description": "## Objective\nImplement the backend export endpoint using the accepted contract.\n\n## Context\nThis lane is parallel-safe with the frontend trigger once DOG-M-002 is complete.\n\n## Scope\n- Owned work: API route, server-side tests.\n- Non-scope: frontend trigger and release docs.\n\n## Dependencies / Blockers\n- Blocked by: DOG-M-002.\n\n## Acceptance Criteria\n- Endpoint returns only the authenticated user's profile export.\n- Unauthorized requests are rejected.\n\n## Verification\nRun backend route tests and record output in the ledger.\n\n## Notes For Future Agents\nCreate a Defect issue if existing auth middleware behaves differently than expected.",
+      "links": [
+        {"title": "API source", "url": "file://app/api/profile-export"},
+        {"title": "Contract", "url": "file://docs/profile-export-contract.md"}
+      ],
+      "writeSet": ["app/api/profile-export/**", "tests/profile-export-api.test.ts"]
+    },
+    {
+      "key": "DOG-M-004",
+      "title": "Implement frontend export trigger",
+      "parent": "DOG-M-001",
+      "blockedBy": ["DOG-M-002"],
+      "labels": ["agent-ready", "parallel-safe", "touches-frontend"],
+      "milestone": "Implementation",
+      "description": "## Objective\nAdd the profile export trigger in the account settings UI.\n\n## Context\nThis lane consumes the accepted API contract and should not change backend semantics.\n\n## Scope\n- Owned work: account settings UI and component tests.\n- Non-scope: API route internals.\n\n## Dependencies / Blockers\n- Blocked by: DOG-M-002.\n\n## Acceptance Criteria\n- Authenticated users can request an export.\n- Loading and error states are visible.\n\n## Verification\nRun frontend component tests and a browser smoke check if available.\n\n## Notes For Future Agents\nIf the UI needs new copy approval, propose a Documentation gap issue.",
+      "links": [
+        {"title": "Settings UI", "url": "file://app/settings/account"},
+        {"title": "Contract", "url": "file://docs/profile-export-contract.md"}
+      ],
+      "writeSet": ["app/settings/account/**", "tests/profile-export-ui.test.tsx"]
+    },
+    {
+      "key": "DOG-M-005",
+      "title": "Final verification and release handoff",
+      "parent": "DOG-M-001",
+      "blockedBy": ["DOG-M-003", "DOG-M-004"],
+      "labels": ["agent-ready", "serial-required", "verification-missing"],
+      "milestone": "Final Verification, Release & Monitoring",
+      "description": "## Objective\nVerify the complete profile export flow and leave a handoff.\n\n## Context\nThis is the serial gate after backend and frontend implementation.\n\n## Acceptance Criteria\n- Backend and frontend tests pass.\n- Auth behavior is checked end-to-end.\n- Completion comment includes changed files, checks, risks, and follow-ups.\n\n## Verification\nRun the full profile export test command set and read back the ledger.\n\n## Notes For Future Agents\nDo not close until dependency links and completion evidence are present.",
+      "links": [
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-medium/EXECUTION.md"}
+      ],
+      "writeSet": ["../.codex-linear-ledgers/sandbox-dogfood-medium/EXECUTION.md"],
+      "serial": true
+    }
+  ]
+}

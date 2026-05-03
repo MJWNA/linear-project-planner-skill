@@ -29,6 +29,8 @@ future agent:
 - what verification proves completion
 - what business outputs must not change
 - where durable cross-session execution memory lives
+- what project principles or fundamentals should guide repeated decisions
+- how newly discovered work becomes issues, candidates, or durable notes
 
 ## Quick Path
 
@@ -39,12 +41,31 @@ future agent:
    inside the Linear plan when the user is asking for a Linear project. Minimal
    repo inspection needed to shape the plan is allowed before issue creation;
    substantive findings belong in tracked issues.
-4. Claim one issue at a time with `linear-agent start`; use separate branches
-   and worktrees for independent write-capable agents.
-5. Verify every issue before `linear-agent complete`, then mirror the Linear
+4. Apply Continuous Issue Discovery throughout planning and execution: create
+   required issues, propose useful non-blocking candidates, and log context-only
+   findings.
+5. Run a safe parallelism checkpoint after project creation or read-back, then
+   claim work with `linear-agent start`; use separate branches and worktrees for
+   independent write-capable agents.
+6. Verify every issue before `linear-agent complete`, then mirror the Linear
    status/comment and read it back.
-6. Run final verification, reconcile Linear, and finalize only with explicit
+7. Run final verification, reconcile Linear, and finalize only with explicit
    evidence.
+
+## Expanded Mode
+
+Use expanded mode only when the user explicitly asks for expanded mode,
+long-horizon planning, detailed multi-phase planning, deep research first,
+dependency mapping, local project docs or references, software-firm-grade
+planning, multi-team delivery, or heavy safe parallel-agent coordination.
+
+Baseline mode remains the default for ordinary Linear planning, execution,
+audits, remediation, companion ledgers, dependencies, safe-parallelism
+checkpoints, and verification gates. Do not create expanded-mode docs folders,
+research dossiers, or provenance policies for ordinary baseline projects.
+
+When expanded mode is triggered, load `references/expanded-mode.md` after the
+normal local project rules and before creating the project graph.
 
 ## Reference Map
 
@@ -52,9 +73,16 @@ Load deeper references only when the current task needs them:
 
 - `references/operator-cheatsheet.md`: one-page minimal safe path.
 - `references/project-structure.md`: milestones, labels, parent issues, child
-  issue template, sparse link graph, and research-as-planned-work template.
+  issue template, safe parallelism planning, sparse link graph, and
+  research-as-planned-work template.
+- `references/project-principles.md`: scaled Project Principles / Fundamentals
+  surfaces, compact baseline sections, promotion rules, and amendments.
 - `references/execution-hygiene.md`: companion ledger, `linear-agent`,
-  issue-state hygiene, worktrees, completion comments, and finalization.
+  issue-state hygiene, safe parallelism checkpoints, worktrees, completion
+  comments, and finalization.
+- `references/source-checkpoints.md`: phase-based source rereading model for
+  kickoff, planning, issue creation, implementation, parallel delegation, scope
+  changes, verification, handoff, and closeout.
 - `references/validation-modes.md`: standard validation, optional deep
   auto-research validation, production gates, and sink/output preservation.
 - `references/trigger-preservation.md`: trigger-safe front-door contract for
@@ -63,9 +91,15 @@ Load deeper references only when the current task needs them:
   contract for future MCP/function-tool layers.
 - `references/runtime-state.md`: model/runtime guidance, Responses API state
   continuity, and compaction recovery.
+- `references/expanded-mode.md`: opt-in long-horizon planning workflow for deep
+  research, local docs, dependency maps, provenance, multi-agent allocation,
+  synthesis gates, dogfood, and baseline contamination safeguards. Load only
+  after an expanded-mode trigger is present.
 - `references/repository-hardening.md`: CI, release, CodeQL, branch/ruleset, and
   solo-maintainer hardening policy.
 - `templates/EXECUTION.md`: companion ledger shape and checklist semantics.
+- `templates/project-principles.md`: full companion principles document for
+  larger, ambiguous, or expanded-mode projects.
 - `templates/production-gates.md`: production and sink/output inventory gates.
 - `scripts/linear-agent`: local transition wrapper, direct Linear mode,
   reconciliation, and finalization guards.
@@ -88,9 +122,22 @@ Before creating issues:
    list.
 6. Create a companion execution ledger before or alongside Linear issue
    creation.
-7. Build a sparse link graph across tasks, docs, source artifacts, and
+7. Capture a Project Principles / Fundamentals surface; keep it compact for
+   small baseline projects and promote it only when the project needs a
+   separate durable decision reference.
+8. Add a compact project description with goal, source of truth, scope,
+   non-scope, workstreams, dependency/blocker policy, Continuous Issue
+   Discovery rule, verification expectations, and handoff/context recovery
+   notes when relevant.
+9. Use issue bodies that survive context loss: objective, context, scope,
+   dependencies/blockers, acceptance criteria, verification, and future-agent
+   notes.
+10. Build a sparse link graph across tasks, docs, source artifacts, and
    verification evidence.
-8. Classify validation depth: standard by default; deep auto-research only when
+11. Apply `references/source-checkpoints.md` when the project will span
+    planning, execution, parallel agents, scope changes, verification, handoff,
+    or closeout.
+12. Classify validation depth: standard by default; deep auto-research only when
    explicitly requested, approved, or clearly triggered.
 
 ## Required Guide Issues
@@ -99,9 +146,10 @@ Always add these two guide issues:
 
 ### Guide: Agent Operating Guide
 
-Include how to choose work, dependency order, branch/worktree expectations,
-dirty worktree warnings, docs lookup expectations, Linear update rules, ledger
-path, handoff expectations, and the first safest issue.
+Include how to choose work, safe parallelism checkpoint cadence, dependency
+order, branch/worktree expectations, dirty worktree warnings, docs lookup
+expectations, Linear update rules, ledger path, handoff expectations, and the
+first safest issue.
 
 ### Guide: Verification Matrix
 
@@ -109,6 +157,39 @@ Include baseline local checks, domain-specific checks, production/deployment
 checks when relevant, browser/UI checks when relevant, database migration checks
 when relevant, rollback/post-deploy observation requirements, binary/frozen
 evaluators, validation mode, and final read-back requirements.
+
+## Continuous Issue Discovery
+
+Treat the original Linear plan as a starting model, not a sacred list. During
+research, implementation, testing, review, documentation, handoff, release, and
+coordination, classify newly discovered work as one of:
+
+- Blocker
+- Dependency
+- Defect
+- Research follow-up
+- Implementation follow-up
+- Decision required
+- QA / verification gap
+- Documentation gap
+- Scope expansion
+- Risk / mitigation
+
+Create a Linear issue immediately when the work blocks current execution,
+affects correctness, is required for acceptance, or creates a real dependency.
+Propose an issue candidate when it may be useful but needs coordinator review.
+Log it only when it is contextually useful but not yet actionable.
+
+Created and proposed issues must include why the work was discovered, which
+issue or workstream surfaced it, whether it blocks or depends on anything, which
+phase or workstream owns it, what acceptance criteria prove completion, and what
+future agents need to know after context clears.
+
+Normal mode keeps this lightweight: concise issues or candidates, useful
+blocker/dependency links, and no ceremony for small projects. Expanded mode uses
+a formal discovery protocol with dependency-aware issue creation, ledger/local
+docs updates when project shape changes, rich issue context, and coordinator
+review/deduplication before non-blocking scope expansions are created.
 
 ## Sparse Link Graph
 
@@ -149,8 +230,18 @@ statuses, or dependencies. Keep checklist state honest with `[ ]`, `[x]`, and
 
 ## Linear Transition Wrapper
 
-Use `linear-agent` for execution-state transitions when available, then perform
-and read-back verify the printed Linear MCP actions.
+Use `linear-agent` for execution-state transitions and graph creation. Direct
+Linear GraphQL is the primary path for this skill whenever `LINEAR_API_KEY` or
+`LINEAR_ACCESS_TOKEN` is available. The Codex Linear app/MCP connector is a
+required fallback surface: use it when credentials are unavailable, when the
+user explicitly asks for the connector, when a direct API operation is not yet
+implemented, when the API rejects or blocks a valid operation, or when API
+read-back cannot confirm the requested Linear state. In short: when API read-back cannot confirm the result, fallback is required. Record the API attempt,
+fallback path, and read-back evidence in the ledger or relevant Linear comment.
+
+With credentials and `--apply-linear`, the CLI writes directly to Linear's
+GraphQL API and verifies read-back before confirming success. Without
+credentials, keep using dry-run output as the manual fallback plan.
 
 Common commands:
 
@@ -164,10 +255,60 @@ linear-agent reconcile --ledger <path>
 linear-agent finalize --ledger <path> --verification "<checks>" --evidence "<links>" --linear-reconciled --dependencies "satisfied" --production-gates "not-applicable:<reason>" --sink-gates "not-applicable:<reason>"
 ```
 
-Direct Linear mode requires `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` and
-`--apply-linear`. Endpoint overrides are validated to `https://api.linear.app`
-unless explicitly allowed for trusted testing. Fake transport is test-only and
-requires `LINEAR_AGENT_TEST_MODE=1`.
+Direct Linear mode requires `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` and an
+explicit write opt-in such as `--apply-linear` or `LINEAR_AGENT_APPLY=1`.
+Endpoint overrides are validated to `https://api.linear.app` unless explicitly
+allowed for trusted testing. Fake transport is test-only and requires
+`LINEAR_AGENT_TEST_MODE=1`.
+
+## Live API Mode
+
+`linear-agent graph-apply --apply-linear --from <plan>.json` creates and
+updates Linear project graphs directly through `https://api.linear.app/graphql`.
+Linear MCP is no longer required for graph creation when credentials are
+available. If an agent can see credentials, it should not ask the Linear
+app/MCP connector to create, update, read back, reconcile, discover, or promote
+project graph state unless the user explicitly requested that connector path or
+the direct API path is unavailable, blocked, missing the required operation, or
+cannot prove read-back. When that happens, fall back to MCP immediately and
+preserve the blocked API evidence.
+
+Supported live operations:
+
+- `projectCreate` / `projectUpdate`
+- `projectDelete` for disposable smoke teardown
+- `issueLabelCreate` / `issueLabelUpdate`
+- `projectMilestoneCreate` / `projectMilestoneUpdate`
+- `issueCreate` / `issueBatchCreate` / `issueUpdate`
+- `issueRelationCreate` for `blocks`, `related`, and `duplicate` relations
+- `attachmentCreate` / `attachmentUpdate` with source metadata
+- paginated project issue read-back for `graph-readback` and
+  `reconcile --project`, starting at 250 issues per page and reducing the page
+  size if Linear reports query complexity pressure
+
+Issue spillover is reactive. The direct API path must try to create or update
+the Linear issue normally first. Only when Linear rejects the actual issue body
+with a size, length, or character-limit error should it write the full issue
+description to a local spillover Markdown file and retry Linear with a compact
+pointer body. Do not create per-issue local docs preemptively.
+
+Idempotence keys:
+
+- Project: `(team.id, name)`
+- Milestone: `(project.id, name)`
+- Label: `(team.id, name)`
+- Issue: explicit `identifier` when supplied, otherwise `(team.id, title)`
+- Relation: `(issueId, relatedIssueId, type)`
+- Attachment: `(issueId, url)`
+
+Every live mutation must check Linear's `success` flag, read the affected graph
+back, and fail closed if confirmation disagrees. Project scans must follow
+Linear cursor pagination so large plans do not silently hide drift after the
+first page, and they should adapt page size when a rich read-back selection
+exceeds Linear's query complexity budget. The HTTP transport should respect
+`RATELIMITED` / HTTP 429 responses and Linear rate-limit or complexity headers
+before retrying. Default mode remains dry-run; mutations require `--apply-linear` or
+`LINEAR_AGENT_APPLY=1`.
 
 ## Execution State Hygiene
 
@@ -177,6 +318,8 @@ requires `LINEAR_AGENT_TEST_MODE=1`.
 - Add an acknowledgement comment before long-running work.
 - Add progress comments for material discoveries, blockers, or handoffs.
 - Keep blockers, related issues, duplicates, and follow-ups current.
+- Re-run the safe parallelism checkpoint after material issue completions,
+  blockers, or scope changes.
 - Do not mark an issue `Done` until acceptance criteria and verification pass.
 - Completion comments must include changed/inspected files, checks run, result,
   residual risks, and follow-ups.
@@ -187,9 +330,31 @@ requires `LINEAR_AGENT_TEST_MODE=1`.
 
 ## Parallel Work
 
-Use `parallel-safe` only when write scopes and behavior contracts do not overlap.
-For write-capable parallel agents, assign one Linear issue, one branch, one
-worktree, one explicit write set, and non-owned areas the agent must not edit.
+Default to looking for safe parallel execution opportunities. Run a safe
+parallelism checkpoint after creating or reading a Linear project, and repeat it
+after material issue completions, blockers, or scope changes.
+
+At each checkpoint:
+
+- Identify independent, unblocked `agent-ready` issues.
+- Group candidate issues by dependency order, write scope, risk, and
+  verification overlap.
+- Spawn as many parallel agents as safely useful when ownership is clear.
+- Use `parallel-safe` only when write scopes and behavior contracts do not overlap.
+- For write-capable parallel agents, assign one Linear issue, one branch, one
+  worktree, one owned write scope, explicit non-owned areas, and one
+  verification command.
+- Use bounded read-only or context-heavy agents for context isolation when
+  research, audit, read-back, verification, large docs, logs, diffs, issue
+  histories, or reference material would otherwise overload coordinator context.
+- Keep the coordinator responsible for decisions, integration, Linear state,
+  dependencies, comments, ledger updates, and final verification.
+- Explain serial execution decisions by naming the exact constraint: dependency,
+  shared file/module, unclear ownership, production/sink gate, verification
+  coupling, or coordinator-level decision context.
+- Create follow-up Linear issues when work must be split before safe parallel
+  execution.
+
 If write scopes overlap, mark issues `serial-required` or `overlap-zone` until
 the coordinator reconciles ownership.
 
@@ -224,5 +389,5 @@ explicitly changes it.
 
 After project creation or restructuring, post a project status update or
 operating-guide comment summarizing the issue range, highest-priority gates,
-serial dependencies, production risks, first execution order, and companion
-ledger path.
+serial dependencies or exact serial constraints, safe parallel batches,
+production risks, first execution order, and companion ledger path.

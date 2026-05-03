@@ -24,9 +24,11 @@ jobs:
         run: |
           set -euo pipefail
           version="${{ inputs.version }}"
+          tag_commit="$(git rev-parse "v$version^{commit}")"
+          head_commit="$(git rev-parse HEAD)"
+          test "$head_commit" = "$tag_commit"
           test "$(cat VERSION)" = "$version"
-          grep -Fq "## [$version]" CHANGELOG.md
-          git rev-parse "v$version"
+          grep -Fq "## ${version}" CHANGELOG.md
           bash tests/test-linear-agent.sh
           python3 -m unittest tests/test_linear_agent_graphql.py tests/test_linear_agent_graph_features.py
           python3 tools/linear-front-door-evaluator.py

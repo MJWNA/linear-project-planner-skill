@@ -20,6 +20,15 @@ Update it after every material state transition. If Linear and the ledger
 disagree, trust Linear for canonical issue status, trust comments for audit
 history, and record reconciliation.
 
+## Source Checkpoints
+
+Use `references/source-checkpoints.md` before decisions that can drift or lose
+context: kickoff, planning, issue creation, implementation, parallel
+delegation, scope change, verification, handoff, and closeout. Do not reread
+everything every time. Read the smallest source set that can change the next
+decision, then record the checkpoint in the ledger or the relevant Linear
+comment.
+
 ## `linear-agent` Workflow
 
 Use the wrapper when available:
@@ -31,9 +40,15 @@ linear-agent complete MAS-123 --ledger <path> --verification "<check>: <result>"
 linear-agent reconcile --ledger <path>
 ```
 
-After a dry-run wrapper transition, perform the printed Linear MCP actions and
-read the issue back. If direct mode is used, verify that the CLI confirms Linear
-state and comment read-back.
+When credentials exist, direct GraphQL mode is the primary path: add
+`--apply-linear` so the wrapper writes through `https://api.linear.app/graphql`
+and confirms Linear state/comment read-back. After a dry-run wrapper
+transition, treat the printed Linear app/MCP/manual actions as fallback
+instructions for credentials-free runtimes or explicit connector requests. If
+the direct API path is unavailable, lacks the requested operation, blocks a
+valid request, or fails read-back confirmation, switch to the Linear MCP
+fallback immediately. Record the API failure, fallback command/tool, and
+read-back evidence before claiming success.
 
 ## Issue State Hygiene
 
@@ -44,6 +59,26 @@ state and comment read-back.
 - Completion comments must include changed/inspected files, checks run, result,
   residual risks, and follow-ups.
 - Parent workstreams stay open until their child issues and final gate are done.
+
+## Safe Parallelism Checkpoints
+
+Run a lightweight parallelism checkpoint after project creation/read-back and
+after material completions, blockers, or scope changes.
+
+At each checkpoint:
+
+- identify independent, unblocked `agent-ready` issues
+- group candidates by dependency order, write scope, risk, and verification
+  overlap
+- split work into follow-up issues before dispatch if ownership is too broad
+- keep dependent, shared-scope, or unclear work serial until reconciled
+- record the decision in Linear comments and the ledger
+
+Bounded read-only agents may run in parallel for context isolation when
+research, audit, read-back, verification, large docs, logs, diffs, issue
+histories, or reference material would otherwise overload coordinator context.
+Give them a time or scope limit and do not allow write access unless promoted to
+a write-capable assignment.
 
 ## Parallel Code Execution With Worktrees
 
@@ -58,7 +93,9 @@ Coordinator responsibilities:
 - define non-owned areas
 - tell agents they are not alone in the codebase
 - prevent reverts or cleanups outside ownership
+- make coordinator-level decisions, integration calls, and dependency changes
 - merge only after issue verification and coordinator reconciliation
+- maintain Linear status, comments, ledger updates, and final verification
 
 Example:
 
@@ -67,7 +104,13 @@ git worktree add ../repo-mas-123 -b codex/mas-123-feature main
 git worktree add ../repo-mas-124 -b codex/mas-124-docs main
 ```
 
-If write scopes overlap, mark issues `serial-required` or `overlap-zone`.
+Each write-capable assignment must state the Linear issue, branch/worktree,
+owned write scope, non-owned areas, and verification command.
+
+Use serial execution when there is a dependency, a shared file/module, unclear
+ownership, a production or sink gate, verification coupling, or
+coordinator-level decision context. If work is almost parallel-safe but too
+large, create follow-up issues that split the scope before dispatch.
 
 ## Finalization
 

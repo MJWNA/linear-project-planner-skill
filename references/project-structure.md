@@ -34,6 +34,7 @@ Create or reuse:
 - `touches-sync`
 - `touches-frontend`
 - `touches-security`
+- `continuous-discovery`
 
 Optional execution labels:
 
@@ -61,12 +62,67 @@ Typical parents:
 
 - Guide: Agent Operating Guide
 - Guide: Verification Matrix
+- Guide: Project Principles / Fundamentals when a separate principles document
+  or dedicated guide is needed
 - Workstream: Security/Auth
 - Workstream: Data/Business Logic
 - Workstream: Sync/Integrations
 - Workstream: Database/Performance
 - Workstream: Frontend/UX
 - Workstream: Final Release/Monitoring
+
+## Normal-Mode Project Description
+
+Normal mode should be structured enough that the project survives context loss
+without becoming expanded mode. Keep the description compact and include only
+the fields that matter:
+
+- Project goal
+- Source of truth
+- Scope
+- Non-scope
+- Phases or workstreams
+- Dependency/blocker policy
+- Continuous Issue Discovery rule
+- Verification expectations
+- Handoff/context recovery expectations
+- Current status or next action when useful
+
+Avoid long research dossiers, local docs folder requirements, provenance tables,
+or expanded-mode dependency maps unless the project is explicitly promoted.
+
+## Normal-Mode Issue Body
+
+Use a compact issue body for ordinary baseline projects:
+
+```md
+## Objective
+What this issue should accomplish.
+
+## Context
+Why this exists and what future agents need to know.
+
+## Scope
+- Owned work:
+- Non-scope:
+
+## Dependencies / Blockers
+- Blocks:
+- Blocked by:
+- Related:
+
+## Acceptance Criteria
+- Observable completion criteria.
+
+## Verification
+- Exact command, read-back, review, or manual check.
+
+## Notes For Future Agents
+- Context recovery notes, known overlap, and follow-up candidates.
+```
+
+Keep normal-mode issues concise. Add the detail needed for recovery and
+verification, not bureaucracy.
 
 ## Child Issue Template
 
@@ -97,8 +153,88 @@ What is wrong, risky, or missing.
 ## Agent Notes
 - Parallel-safe or serial-required.
 - Known overlap files/modules.
+- Owned write scope and non-owned areas.
+- Required verification command.
 - Follow-up/backfill/migration notes.
 ```
+
+## Continuous Issue Discovery
+
+The project graph is a living model. During planning, research, implementation,
+review, testing, documentation, release, and handoff, classify discovered work
+as one of:
+
+- Blocker
+- Dependency
+- Defect
+- Research follow-up
+- Implementation follow-up
+- Decision required
+- QA / verification gap
+- Documentation gap
+- Scope expansion
+- Risk / mitigation
+
+Create an issue immediately when the finding blocks current work, affects
+correctness, is required for acceptance, or creates a real dependency. Propose
+an issue candidate when the work might be useful but needs coordinator review.
+Log context-only findings in the ledger, operating guide, or completion comment
+when they are not yet actionable.
+
+Created or proposed issues should include:
+
+- why it was discovered
+- which issue or workstream surfaced it
+- whether it blocks or depends on anything
+- which phase or workstream owns it
+- acceptance criteria
+- context future agents need after compaction
+
+In normal mode, keep discovery lightweight: concise candidates or issues, useful
+blocker/dependency links, and no extra docs ceremony. For non-blocking
+expansions, prefer a short proposed-candidate note until the coordinator
+deduplicates and accepts it.
+
+## Project Principles / Fundamentals
+
+Every project needs a durable principles surface before the issue graph is
+finalized. Keep it scaled to the project:
+
+- Small baseline projects: add a compact section to the operating guide,
+  verification matrix, or companion ledger.
+- Larger or ambiguous baseline projects: create a separate companion document
+  from `templates/project-principles.md`.
+- Expanded-mode projects: create a first-class living companion document with
+  research-seeded principles, amendment controls, and links to dependency maps,
+  QA plans, ADRs, and agent workflow.
+
+The compact baseline section should cover project principles / fundamentals,
+non-negotiables, quality bar, decision rules, and anti-goals. Only include
+load-bearing principles that change repeated decisions. Tasks belong in Linear,
+execution state belongs in the ledger, detailed decisions belong in ADRs,
+verification belongs in QA artifacts, and sequencing belongs in Linear
+relationships or dependency maps.
+
+## Safe Parallelism Planning
+
+After project creation/read-back, mark a checkpoint in the operating guide or
+ledger. Repeat the checkpoint after material completions, blockers, or scope
+changes.
+
+Checkpoint questions:
+
+- Which `agent-ready` issues are independent and unblocked?
+- What is the dependency order, write scope, risk level, and verification
+  overlap?
+- Which issues need separate branches/worktrees for write-capable agents?
+- Which read-only/context-heavy tasks can run in bounded parallel for context
+  isolation across research, audit, read-back, verification, large
+  docs/logs/diffs, issue histories, or reference material?
+- Does any issue need splitting into follow-ups before safe parallel execution?
+
+Mark issues `serial-required` when they have dependencies, shared files/modules,
+unclear ownership, production or sink gates, verification coupling, or
+coordinator-level decision context.
 
 ## Research As Planned Work
 

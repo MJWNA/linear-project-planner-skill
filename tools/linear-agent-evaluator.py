@@ -102,8 +102,17 @@ def main() -> int:
             "docs explain direct mode",
             10,
             contains("README.md", "--apply-linear")
-            and contains("README.md", "SCORE 130/130")
+            and contains("README.md", "SCORE 200/200")
             and contains("SKILL.md", "LINEAR_API_KEY")
+            and contains("SKILL.md", "Linear GraphQL is the primary path")
+            and contains("README.md", "direct GraphQL is the primary route")
+            and contains("references/execution-hygiene.md", "direct GraphQL mode is the primary path")
+            and contains("references/operator-cheatsheet.md", "fallback when credentials are unavailable")
+            and contains("references/operator-cheatsheet.md", "read-back cannot confirm")
+            and contains("SKILL.md", "required fallback surface")
+            and contains("SKILL.md", "when API read-back cannot confirm")
+            and contains("references/command-schemas.md", "required fallback")
+            and contains("README.md", "direct API blocks/rejections")
             and contains("README.md", "linear-agent reconcile")
             and contains("lib/linear_agent/cli.py", "finalize refuses unfinished issue rows")
             and contains("tests/test-linear-agent.sh", "Expected reconcile against an empty Issue Progress table to fail")
@@ -146,12 +155,90 @@ def main() -> int:
             "agent output fixture coverage",
             10,
             contains("tests/fixtures/linear_issue_templates.md", "## Final Completion Comment")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Normal-Mode Project Description")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Normal-Mode Child Issue")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Expanded-Mode Project Charter")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Expanded-Mode Issue Body")
+            and contains("tests/fixtures/linear_issue_templates.md", "## Continuous Discovery Issue Candidate")
             and contains("tests/fixtures/linear_issue_templates.md", "Standard labels")
             and contains("tests/fixtures/linear_issue_templates.md", "Dependencies")
             and contains("tests/fixtures/linear_issue_templates.md", "Sparse links")
             and contains("tests/fixtures/linear_issue_templates.md", "Residual risks")
             and contains("tests/fixtures/linear_issue_templates.md", "Follow-ups"),
             "missing issue template or final comment fixtures",
+        )
+    )
+    checks.append(
+        (
+            "live graph mutations",
+            15,
+            contains("lib/linear_agent/graphql.py", "ProjectCreate")
+            and contains("lib/linear_agent/graphql.py", "IssueLabelCreate")
+            and contains("lib/linear_agent/graphql.py", "ProjectMilestoneCreate")
+            and contains("lib/linear_agent/graphql.py", "IssueBatchCreate")
+            and contains("lib/linear_agent/graphql.py", "IssueRelationCreate")
+            and contains("lib/linear_agent/graphql.py", "AttachmentCreate")
+            and contains("lib/linear_agent/cli.py", "Graph applied to Linear and read-back verified"),
+            "missing direct graph mutation operations",
+        )
+    )
+    checks.append(
+        (
+            "continuous discovery cli",
+            10,
+            contains("lib/linear_agent/cli.py", "cmd_discover")
+            and contains("lib/linear_agent/cli.py", "cmd_promote")
+            and contains("lib/linear_agent/cli.py", "Continuous Discovery Issue Candidate"),
+            "missing discover/promote command implementation",
+        )
+    )
+    checks.append(
+        (
+            "live api documentation",
+            10,
+            contains("README.md", "Linear MCP is no longer required")
+            and contains("SKILL.md", "## Live API Mode")
+            and contains("references/command-schemas.md", "Live API Mode")
+            and contains("docs/research/direct-linear-graphql-adr.md", "Direct Linear GraphQL")
+            and contains("docs/research/linear-api-v4-efficiency-adr.md", "Linear API v4 Efficiency"),
+            "missing direct API docs or ADR",
+        )
+    )
+    checks.append(
+        (
+            "scheduled live smoke",
+            5,
+            contains(".github/workflows/live-linear-smoke.yml", "schedule:")
+            and contains(".github/workflows/live-linear-smoke.yml", "linear-agent smoke")
+            and contains("lib/linear_agent/graphql.py", "ProjectDelete"),
+            "missing scheduled graph smoke workflow",
+        )
+    )
+    checks.append(
+        (
+            "schema-current API efficiency",
+            20,
+            contains("lib/linear_agent/graphql.py", "issueBatchCreate")
+            and contains("lib/linear_agent/graphql.py", "projectDelete")
+            and contains("lib/linear_agent/graphql.py", "project: { id: { eq: $projectId } }")
+            and contains("lib/linear_agent/graphql.py", "pageInfo")
+            and contains("lib/linear_agent/graphql.py", "while page_info.get(\"hasNextPage\")")
+            and contains("lib/linear_agent/graphql.py", "x-ratelimit-complexity-remaining")
+            and contains("tests/test_linear_agent_graph_features.py", "test_graph_apply_title_lookup_is_project_scoped")
+            and contains("tests/test_linear_agent_graph_features.py", "test_project_readback_paginates_all_issues"),
+            "missing batch create, schema-current teardown, pagination, or rate-limit budget coverage",
+        )
+    )
+    checks.append(
+        (
+            "rich relation and attachment graph",
+            10,
+            contains("lib/linear_agent/graph.py", "duplicate_of")
+            and contains("lib/linear_agent/graphql.py", "\"related\"")
+            and contains("lib/linear_agent/graphql.py", "\"duplicate\"")
+            and contains("lib/linear_agent/graphql.py", "\"linear-project-planner\"")
+            and contains("tests/test_linear_agent_graph_features.py", "test_graph_apply_related_duplicate_and_attachment_metadata"),
+            "missing related/duplicate relation or attachment metadata coverage",
         )
     )
 
@@ -165,8 +252,8 @@ def main() -> int:
             if detail:
                 print(detail.rstrip())
 
-    print(f"SCORE {score}/130")
-    return 0 if score == 130 else 1
+    print(f"SCORE {score}/200")
+    return 0 if score == 200 else 1
 
 
 if __name__ == "__main__":

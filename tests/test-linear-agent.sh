@@ -37,6 +37,15 @@ assert_contains "$SKILL_DIR/SKILL.md" "## Parallel Work"
 assert_contains "$SKILL_DIR/SKILL.md" "Use \`parallel-safe\` only when write scopes and behavior contracts do not overlap"
 assert_contains "$SKILL_DIR/SKILL.md" "For write-capable parallel agents, assign one Linear issue, one branch, one"
 assert_contains "$SKILL_DIR/SKILL.md" "references/trigger-preservation.md"
+assert_contains "$SKILL_DIR/SKILL.md" "references/source-checkpoints.md"
+assert_contains "$SKILL_DIR/SKILL.md" "## Expanded Mode"
+assert_contains "$SKILL_DIR/SKILL.md" "Baseline mode remains the default"
+assert_contains "$SKILL_DIR/SKILL.md" "references/expanded-mode.md"
+assert_contains "$SKILL_DIR/SKILL.md" "references/project-principles.md"
+assert_contains "$SKILL_DIR/SKILL.md" "what project principles or fundamentals should guide repeated decisions"
+assert_contains "$SKILL_DIR/SKILL.md" "## Continuous Issue Discovery"
+assert_contains "$SKILL_DIR/SKILL.md" "Create a Linear issue immediately"
+assert_contains "$SKILL_DIR/SKILL.md" "Propose an issue candidate"
 assert_contains "$SKILL_DIR/SKILL.md" "research, source review, audits, and exploratory discovery"
 assert_contains "$SKILL_DIR/SKILL.md" "## Sparse Link Graph"
 assert_contains "$SKILL_DIR/SKILL.md" "links should compress context, not clutter tasks"
@@ -50,7 +59,101 @@ assert_contains "$SKILL_DIR/README.md" "### 5. Optional Deep Auto-Research Valid
 assert_contains "$SKILL_DIR/README.md" "Standard validation is always required"
 assert_contains "$SKILL_DIR/README.md" "Links should compress context, not clutter tasks"
 assert_contains "$SKILL_DIR/README.md" "### Trigger-Safe Progressive Disclosure"
-assert_contains "$SKILL_DIR/README.md" "### Manual Linear Smoke Tests"
+assert_contains "$SKILL_DIR/README.md" "### Expanded Mode"
+assert_contains "$SKILL_DIR/README.md" "### Live Linear Smoke Tests"
+assert_contains "$SKILL_DIR/README.md" "### Continuous Issue Discovery"
+assert_contains "$SKILL_DIR/references/expanded-mode.md" "## Mode Gate"
+assert_contains "$SKILL_DIR/references/expanded-mode.md" "## Multi-Agent Allocation"
+assert_contains "$SKILL_DIR/references/expanded-mode.md" "## Continuous Issue Discovery Protocol"
+assert_contains "$SKILL_DIR/references/project-structure.md" "## Normal-Mode Project Description"
+assert_contains "$SKILL_DIR/references/project-structure.md" "## Normal-Mode Issue Body"
+assert_contains "$SKILL_DIR/references/project-structure.md" "## Continuous Issue Discovery"
+assert_contains "$SKILL_DIR/references/source-checkpoints.md" "## Before Parallel Delegation"
+assert_contains "$SKILL_DIR/references/source-checkpoints.md" "## Before Closeout"
+assert_contains "$SKILL_DIR/references/project-principles.md" "Every Linear project gets a principles surface"
+assert_contains "$SKILL_DIR/templates/project-principles.md" "## Accepted Principles"
+assert_contains "$SKILL_DIR/tests/fixtures/linear_issue_templates.md" "## Continuous Discovery Issue Candidate"
+assert_contains "$SKILL_DIR/templates/expanded-mode/research-dossier.md" "## Source Scope"
+assert_contains "$SKILL_DIR/templates/expanded-mode/dependency-map.md" "## Dependency Edges"
+assert_contains "$SKILL_DIR/templates/expanded-mode/qa-plan.md" "## Baseline Checks"
+assert_contains "$SKILL_DIR/templates/expanded-mode/agent-brief.md" "## Non-Owned Scope"
+assert_contains "$SKILL_DIR/templates/expanded-mode/handoff.md" "## Next Safest Action"
+
+python3 - "$SKILL_DIR/tests/fixtures/linear_issue_templates.md" <<'PY'
+import sys
+from pathlib import Path
+
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
+section_names = (
+    "Normal-Mode Project Description",
+    "Guide Issue",
+    "Normal-Mode Child Issue",
+    "Workstream Issue",
+    "Child Issue",
+    "Expanded-Mode Project Charter",
+    "Expanded-Mode Issue Body",
+    "Continuous Discovery Issue Candidate",
+    "Final Completion Comment",
+)
+
+
+def section(name):
+    marker = f"## {name}"
+    start = text.find(marker)
+    if start == -1:
+        raise SystemExit(f"missing section: {name}")
+    candidates = [
+        text.find(f"\n## {other}", start + len(marker))
+        for other in section_names
+        if other != name
+    ]
+    candidates = [index for index in candidates if index != -1]
+    next_start = min(candidates) if candidates else -1
+    return text[start:] if next_start == -1 else text[start:next_start]
+
+
+required = {
+    "Normal-Mode Project Description": (
+        "## Project Goal",
+        "## Source Of Truth",
+        "## Continuous Issue Discovery",
+        "## Handoff / Context Recovery",
+    ),
+    "Normal-Mode Child Issue": (
+        "## Objective",
+        "## Context",
+        "## Scope",
+        "## Dependencies / Blockers",
+        "## Notes For Future Agents",
+    ),
+    "Expanded-Mode Project Charter": (
+        "## Project Purpose",
+        "## Operating Mode",
+        "## Companion Ledger Path",
+        "## Coordinator Responsibilities",
+    ),
+    "Expanded-Mode Issue Body": (
+        "## Objective",
+        "## Background Context",
+        "## Owned Scope",
+        "## Verification Requirements",
+        "## Required Updates",
+    ),
+    "Continuous Discovery Issue Candidate": (
+        "## Why It Was Discovered",
+        "## Surfaced By",
+        "## Classification",
+        "## Acceptance Criteria",
+        "## Future-Agent Context",
+    ),
+}
+
+for name, headings in required.items():
+    body = section(name)
+    missing = [heading for heading in headings if heading not in body]
+    if missing:
+        raise SystemExit(f"{name} missing headings: {', '.join(missing)}")
+PY
 
 "$BIN" init \
   --ledger "$LEDGER" \
@@ -69,6 +172,10 @@ assert_contains "$LEDGER" "- Repository: /tmp/example-repo"
 assert_contains "$LEDGER" "- Base branch: main"
 assert_contains "$LEDGER" "- Validation mode: standard"
 assert_contains "$LEDGER" "- Deep auto-research loop: not requested"
+assert_contains "$LEDGER" "- Principles surface:"
+assert_contains "$LEDGER" "- Continuous Issue Discovery:"
+assert_contains "$LEDGER" "## Project Principles / Fundamentals"
+assert_contains "$LEDGER" "## Continuous Issue Discovery Log"
 assert_contains "$TMP_DIR/init.out" "Ledger initialized:"
 assert_contains "$LEDGER" "## Decisions"
 assert_contains "$LEDGER" "## Blockers"
@@ -77,8 +184,10 @@ assert_contains "$LEDGER" "## Handoff Notes"
 assert_contains "$LEDGER" "Checklist marker legend:"
 assert_contains "$LEDGER" "- [ ] Final ledger reconciliation completed"
 assert_contains "$LEDGER" "## Parallel Agent Allocation"
+assert_contains "$LEDGER" "## Source Material Checkpoints"
 assert_contains "$LEDGER" "Separate git worktrees are required unless the work is read-only"
-assert_contains "$LEDGER" "| Issue | Agent | Branch | Worktree | Ownership Boundary | Status | Merge/Reconcile Notes |"
+assert_contains "$LEDGER" "| Issue | Agent | Mode | Branch | Worktree | Owned Write Scope | Non-Owned Areas | Verification Command | Status | Merge/Reconcile Notes |"
+assert_contains "$LEDGER" "Read-only/context-heavy parallel tasks for context isolation"
 if [ "$(grep -Fc -- "- TBD" "$LEDGER")" -lt 4 ]; then
   echo "Expected non-activity section placeholders to remain after init" >&2
   cat "$LEDGER" >&2
@@ -156,7 +265,8 @@ assert_contains "$LEDGER" "- Active worktree: /tmp/example|worktree"
 assert_contains "$LEDGER" "| MAS-123 | In Progress | agent:executing | Codex | /tmp/example\\|worktree |"
 assert_contains "$LEDGER" "Claimed for implementation with \"quoted\" note"
 assert_contains "$LEDGER" "and pipe | value"
-assert_contains "$TMP_DIR/start.out" "Required Linear MCP actions"
+assert_contains "$TMP_DIR/start.out" "Direct Linear API primary path"
+assert_contains "$TMP_DIR/start.out" "Fallback Linear app/MCP/manual actions"
 assert_contains "$TMP_DIR/start.out" "_save_issue(id=\"MAS-123\", state=\"In Progress\")"
 assert_contains "$TMP_DIR/start.out" "_save_comment(issueId=\"MAS-123\", body=<comment body below>)"
 assert_contains "$TMP_DIR/start.out" "Comment body:"
@@ -469,7 +579,7 @@ done
 
 assert_contains "$LEDGER" "- Overall status: handoff"
 assert_contains "$LEDGER" "Ready for next session"
-assert_contains "$TMP_DIR/handoff.out" "Required Linear MCP actions"
+assert_contains "$TMP_DIR/handoff.out" "Fallback Linear app/MCP/manual actions"
 assert_contains "$TMP_DIR/handoff.out" "_save_comment"
 assert_contains "$TMP_DIR/handoff.out" "Reconcile"
 
@@ -521,7 +631,7 @@ assert_not_contains "$ACTIVE_FINALIZE_LEDGER" "- Overall status: completed"
   --ledger "$LEDGER" \
   --agent "Codex" \
   --verification "all Linear issues done; fixed evaluator passed" \
-  --evidence "Linear read-back: all issue rows Done; evaluator SCORE 130/130" \
+  --evidence "Linear read-back: all issue rows Done; evaluator SCORE 200/200" \
   --linear-reconciled \
   --dependencies "not-applicable:no blocking dependencies were required" \
   --production-gates "not-applicable:not a production application" \
@@ -543,8 +653,8 @@ assert_contains "$LEDGER" "- [x] First issue chosen by dependency order"
 assert_contains "$LEDGER" "- [x] Follow-up issues created or linked"
 assert_contains "$LEDGER" "- [x] Final ledger reconciliation completed"
 assert_not_contains "$LEDGER" "|  |  |  |  |  |  |  |"
-assert_contains "$LEDGER" "Finalized ledger. Agent: Codex. Verification: all Linear issues done; fixed evaluator passed. Evidence: Linear read-back: all issue rows Done; evaluator SCORE 130/130. Note: Project-level checklist reconciled."
-assert_contains "$TMP_DIR/finalize.out" "Required Linear MCP actions"
+assert_contains "$LEDGER" "Finalized ledger. Agent: Codex. Verification: all Linear issues done; fixed evaluator passed. Evidence: Linear read-back: all issue rows Done; evaluator SCORE 200/200. Note: Project-level checklist reconciled."
+assert_contains "$TMP_DIR/finalize.out" "Fallback Linear app/MCP/manual actions"
 assert_contains "$TMP_DIR/finalize.out" "_save_comment(issueId=\"<operating-guide-or-final-verification-issue>\""
 assert_contains "$TMP_DIR/finalize.out" "Verify with Linear project read-back"
 

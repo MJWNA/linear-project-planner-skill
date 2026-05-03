@@ -1,0 +1,237 @@
+{
+  "project": {
+    "name": "Linear Skill Outer Harness Upgrade",
+    "teamKey": "MAS",
+    "description": "Expanded-mode dogfood for Linear planner as an outer harness. API primary, MCP fallback on API block. Research, recursive loops, sensors, dogfood, and runtime sync stay tracked in Linear plus ledger."
+  },
+  "labels": [
+    "agent-ready",
+    "expanded-mode",
+    "research-dossier",
+    "outer-harness",
+    "api-primary",
+    "mcp-fallback",
+    "ralph-loop",
+    "autoresearch",
+    "verification-gate",
+    "parallel-safe",
+    "serial-required",
+    "baseline-protection",
+    "continuous-discovery"
+  ],
+  "milestones": [
+    "Mode Gate And Project System",
+    "Research Dossiers",
+    "Harness Contract And Implementation",
+    "Sensors And Recursive Verification",
+    "Dogfood Release And Runtime Sync"
+  ],
+  "issues": [
+    {
+      "key": "LSOH-W1",
+      "title": "Workstream: Mode gate, project system, and operating guides",
+      "milestone": "Mode Gate And Project System",
+      "labels": ["expanded-mode", "outer-harness", "serial-required"],
+      "description": "## Objective\nOwn the expanded-mode shell, operating guide, verification matrix, dependency map, companion ledger, and first safe execution order.\n\n## Acceptance Criteria\n- Linear project, ledger, local docs, guide issues, verification matrix, dependency map, milestones, labels, dependencies, and status update exist.\n- API-primary/MCP-fallback evidence is recorded.\n- Safe parallelism checkpoint is complete.\n\n## Verification\nRead back project graph, ledger, and guide issues."
+    },
+    {
+      "key": "LSOH-W2",
+      "title": "Workstream: Research dossiers and source-backed synthesis",
+      "milestone": "Research Dossiers",
+      "labels": ["expanded-mode", "research-dossier", "parallel-safe", "outer-harness"],
+      "blockedBy": ["LSOH-W1"],
+      "description": "## Objective\nOwn all source-backed research on Symphony, harness engineering, Ralph/autoresearch loops, and Linear API/MCP fallback semantics.\n\n## Acceptance Criteria\n- Research dossiers separate facts, inferences, recommendations, and refresh triggers.\n- Synthesis creates principles and concrete implementation recommendations.\n- New findings become issues, candidates, or local decision docs.\n\n## Verification\nResearch docs exist and link back to Linear issues."
+    },
+    {
+      "key": "LSOH-W3",
+      "title": "Workstream: Harness contract implementation",
+      "milestone": "Harness Contract And Implementation",
+      "labels": ["expanded-mode", "serial-required", "baseline-protection"],
+      "blockedBy": ["LSOH-W2"],
+      "description": "## Objective\nOwn changes to skill surfaces that make API-primary/MCP fallback and recursive research-to-issue execution explicit without contaminating baseline mode.\n\n## Acceptance Criteria\n- Skill and references contain the hard API/MCP fallback rule.\n- Recursive loop guidance is explicit for expanded/deep validation mode.\n- Baseline mode remains concise and opt-in-safe.\n\n## Verification\nRun front-door and audit evaluators plus focused tests."
+    },
+    {
+      "key": "LSOH-W4",
+      "title": "Workstream: Sensors, dogfood, and recursive verification",
+      "milestone": "Sensors And Recursive Verification",
+      "labels": ["expanded-mode", "verification-gate", "ralph-loop", "autoresearch", "serial-required"],
+      "blockedBy": ["LSOH-W3"],
+      "description": "## Objective\nOwn deterministic/inferential sensor matrix, dogfood loop passes, missed-requirement discovery, and follow-up issue creation.\n\n## Acceptance Criteria\n- QA plan identifies deterministic and inferential sensors.\n- Dogfood pass records pass inputs, checks, findings, follow-up issues, and next loop decision.\n- Failed checks create issues or documented non-issues.\n\n## Verification\nRun deterministic checks and inferential review against research docs."
+    },
+    {
+      "key": "LSOH-W5",
+      "title": "Workstream: Release readiness and runtime sync",
+      "milestone": "Dogfood Release And Runtime Sync",
+      "labels": ["expanded-mode", "verification-gate", "serial-required"],
+      "blockedBy": ["LSOH-W4"],
+      "description": "## Objective\nOwn final reconciliation, installed runtime sync, release readiness, and public release work when in scope.\n\n## Acceptance Criteria\n- Linear and ledger agree.\n- Verification suite is complete or skips are justified.\n- Runtime copy is synced only after source verification.\n- Release workflow is followed if public release is in scope.\n\n## Verification\nRun final checks, install check, read-back, and ledger reconciliation."
+    },
+    {
+      "key": "LSOH-001",
+      "title": "Guide: Agent Operating Guide",
+      "parent": "LSOH-W1",
+      "milestone": "Mode Gate And Project System",
+      "labels": ["agent-ready", "expanded-mode", "outer-harness"],
+      "description": "## Objective\nCreate the operating guide for this expanded-mode dogfood project.\n\n## Background Context\nThis project is not a static research plan. Linear is the control plane, the companion ledger is durable execution memory, and local docs preserve source-backed research and decisions.\n\n## Required Reading\n- docs/expanded-mode/linear-skill-outer-harness-upgrade/README.md\n- ../.codex-linear-ledgers/linear-skill-outer-harness-upgrade/EXECUTION.md\n- SKILL.md\n- references/expanded-mode.md\n- references/execution-hygiene.md\n\n## Operating Rules\n- Direct Linear API is primary whenever credentials exist.\n- MCP is the immediate fallback when API execution blocks, is unavailable, is unimplemented, or fails read-back.\n- Coordinator owns Linear state, ledger state, dependency map, release metadata, installed runtime sync, and final verification.\n- Research findings become Linear issues, sub-issues, decisions, or local docs.\n- Expanded mode must remain opt-in.\n\n## First Safe Execution Order\n1. Build and read back the Linear graph.\n2. Run parallel research dossiers.\n3. Synthesize harness principles and project decisions.\n4. Implement the API/MCP fallback contract hardening.\n5. Add recursive loop and sensor/evaluator behavior.\n6. Run deterministic and inferential sensors.\n7. Install runtime after source verification.\n\n## Acceptance Criteria\n- Guide exists in Linear.\n- Ledger points to this guide.\n- First safe issue and coordinator-owned state are explicit.\n\n## Verification\nRead back issue, project, and ledger references.",
+      "links": [
+        {"title": "Local project README", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/docs/expanded-mode/linear-skill-outer-harness-upgrade/README.md"}
+      ]
+    },
+    {
+      "key": "LSOH-002",
+      "title": "Guide: Verification Matrix And Sensor Stack",
+      "parent": "LSOH-W1",
+      "milestone": "Mode Gate And Project System",
+      "labels": ["agent-ready", "expanded-mode", "verification-gate", "ralph-loop", "autoresearch"],
+      "description": "## Objective\nDefine the verification matrix for deterministic sensors, inferential sensors, Ralph Wiggum loops, and optional auto-research loops.\n\n## Required Reading\n- docs/expanded-mode/linear-skill-outer-harness-upgrade/qa/qa-plan.md\n- references/validation-modes.md\n- references/source-checkpoints.md\n\n## Acceptance Criteria\n- Deterministic checks are listed.\n- Inferential review passes are listed.\n- The loop for missed requirements is explicit: create/update issue, implement, test, review, synthesize, repeat.\n- Frozen evaluator principle is preserved before final completion claims.\n\n## Verification\nRun graph read-back and confirm the QA plan is linked from this issue.",
+      "links": [
+        {"title": "QA plan", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/docs/expanded-mode/linear-skill-outer-harness-upgrade/qa/qa-plan.md"}
+      ]
+    },
+    {
+      "key": "LSOH-003",
+      "title": "Guide: Dependency Map And Safe Parallelism",
+      "parent": "LSOH-W1",
+      "milestone": "Mode Gate And Project System",
+      "labels": ["agent-ready", "expanded-mode", "parallel-safe", "serial-required"],
+      "description": "## Objective\nKeep dependency order, safe parallel batches, serial constraints, and coordinator-only state explicit.\n\n## Required Reading\n- docs/expanded-mode/linear-skill-outer-harness-upgrade/dependencies/dependency-map.md\n- references/expanded-mode.md\n- references/execution-hygiene.md\n\n## Acceptance Criteria\n- Research dossiers are parallel-safe.\n- Write-capable changes remain serial until research synthesis and evaluator gates are clear.\n- Coordinator-only state is named.\n- New discoveries update Linear plus the dependency map.\n\n## Verification\nRead back the issue graph and confirm no write-capable parallel assignment has overlapping ownership.",
+      "links": [
+        {"title": "Dependency map", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/docs/expanded-mode/linear-skill-outer-harness-upgrade/dependencies/dependency-map.md"}
+      ]
+    },
+    {
+      "key": "LSOH-010",
+      "title": "Research: OpenAI Symphony control-plane and scheduler model",
+      "parent": "LSOH-W2",
+      "milestone": "Research Dossiers",
+      "labels": ["agent-ready", "research-dossier", "parallel-safe", "outer-harness"],
+      "blockedBy": ["LSOH-001"],
+      "description": "## Objective\nProduce a source-backed dossier on Symphony as a Linear-backed control plane, scheduler, runner, workspace lifecycle, state machine, and proof-of-work surface.\n\n## Required Sources\n- OpenAI Symphony article\n- OpenAI Symphony repository\n- OpenAI Symphony SPEC.md\n\n## Outputs\n- docs/expanded-mode/linear-skill-outer-harness-upgrade/research/symphony-control-plane.md\n- Follow-up issue candidates for gaps between Symphony and this skill.\n\n## Acceptance Criteria\n- Separate facts, inferences, recommendations, and refresh triggers.\n- Identify which Symphony ideas should become skill guidance, CLI behavior, templates, or future tool surfaces.\n- Include implications for Linear issue state, blockers, isolated workspaces, retries, read-back, and proof of work.\n\n## Verification\nDossier cites the provided sources and produces at least one concrete implementation recommendation.",
+      "links": [
+        {"title": "OpenAI Symphony article", "url": "https://openai.com/index/open-source-codex-orchestration-symphony/"},
+        {"title": "OpenAI Symphony repo", "url": "https://github.com/openai/symphony"},
+        {"title": "OpenAI Symphony spec", "url": "https://github.com/openai/symphony/blob/main/SPEC.md"}
+      ]
+    },
+    {
+      "key": "LSOH-011",
+      "title": "Research: Harness engineering guides, sensors, and steering loops",
+      "parent": "LSOH-W2",
+      "milestone": "Research Dossiers",
+      "labels": ["agent-ready", "research-dossier", "parallel-safe", "outer-harness"],
+      "blockedBy": ["LSOH-001"],
+      "description": "## Objective\nProduce a dossier on inner vs outer harnesses, guides/feedforward, sensors/feedback, deterministic checks, inferential checks, and the steering loop.\n\n## Required Sources\n- Thoughtworks/Fowler Harness Engineering article\n- OpenAI Harness Engineering article\n\n## Outputs\n- docs/expanded-mode/linear-skill-outer-harness-upgrade/research/harness-guides-sensors.md\n- Candidate changes for SKILL.md, references, templates, and evaluators.\n\n## Acceptance Criteria\n- Translate source concepts into the skill's own language.\n- Identify deterministic sensors already available in this repo and missing sensors that should be added.\n- Identify inferential sensors suitable for agent review and dogfood.\n\n## Verification\nDossier maps each recommendation to a source-backed principle and a repo implementation surface.",
+      "links": [
+        {"title": "Thoughtworks/Fowler Harness Engineering", "url": "https://martinfowler.com/articles/harness-engineering.html"},
+        {"title": "OpenAI Harness Engineering", "url": "https://openai.com/index/harness-engineering/"}
+      ]
+    },
+    {
+      "key": "LSOH-012",
+      "title": "Research: Ralph Wiggum and auto-research loop design",
+      "parent": "LSOH-W2",
+      "milestone": "Research Dossiers",
+      "labels": ["agent-ready", "research-dossier", "parallel-safe", "ralph-loop", "autoresearch"],
+      "blockedBy": ["LSOH-001", "LSOH-002"],
+      "description": "## Objective\nDesign the recursive loop pattern for this skill: Ralph Wiggum loops for repeated agent review and auto-research loops for repeated measurable improvement.\n\n## Required Sources\n- OpenAI Harness Engineering article section on repeated agent review loops.\n- Local autoresearch skill contract.\n- This repo's validation mode and evaluator files.\n\n## Outputs\n- docs/expanded-mode/linear-skill-outer-harness-upgrade/research/recursive-loop-design.md\n- A proposed frozen evaluator set for the final loop.\n\n## Acceptance Criteria\n- Distinguish brute-force review loops from metric-driven auto-research loops.\n- Define when to create new issues/sub-issues from misses.\n- Preserve frozen evaluator principles.\n- Avoid making long-horizon recursion mandatory for baseline projects.\n\n## Verification\nResearch output includes a loop diagram or step list and maps each loop phase to Linear issue state.",
+      "links": [
+        {"title": "OpenAI Harness Engineering", "url": "https://openai.com/index/harness-engineering/"}
+      ]
+    },
+    {
+      "key": "LSOH-013",
+      "title": "Research: Linear API primary with MCP fallback semantics",
+      "parent": "LSOH-W2",
+      "milestone": "Research Dossiers",
+      "labels": ["agent-ready", "research-dossier", "parallel-safe", "api-primary", "mcp-fallback"],
+      "blockedBy": ["LSOH-001"],
+      "description": "## Objective\nResearch and specify the exact hard rule: direct Linear API is primary; MCP is the fallback whenever API execution is unavailable, blocked, unimplemented, or fails read-back.\n\n## Required Sources\n- Current SKILL.md Linear Transition Wrapper and Live API Mode sections.\n- references/execution-hygiene.md\n- references/command-schemas.md\n- lib/linear_agent/graphql.py and cli.py behavior.\n\n## Outputs\n- docs/expanded-mode/linear-skill-outer-harness-upgrade/decisions/api-primary-mcp-fallback.md\n- Concrete implementation checklist.\n\n## Acceptance Criteria\n- Define block conditions.\n- Define fallback order and read-back requirements.\n- Identify source files to change.\n- Identify tests/evaluators to update.\n\n## Verification\nDecision note names the exact wording to add or update in skill surfaces.",
+      "links": [
+        {"title": "Command schemas", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/references/command-schemas.md"},
+        {"title": "Execution hygiene", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/references/execution-hygiene.md"}
+      ]
+    },
+    {
+      "key": "LSOH-020",
+      "title": "Synthesis: Outer harness principles and project decision surface",
+      "parent": "LSOH-W2",
+      "milestone": "Research Dossiers",
+      "labels": ["agent-ready", "expanded-mode", "serial-required", "outer-harness"],
+      "blockedBy": ["LSOH-010", "LSOH-011", "LSOH-012", "LSOH-013"],
+      "description": "## Objective\nSynthesize the research dossiers into project principles, tradeoff rules, anti-goals, and implementation decisions.\n\n## Outputs\n- docs/expanded-mode/linear-skill-outer-harness-upgrade/decisions/outer-harness-principles.md\n- Updated dependency map if sequencing changes.\n- Follow-up issues for any missing work discovered by the synthesis.\n\n## Acceptance Criteria\n- Every accepted principle has source or repo evidence.\n- Recommendations are assigned to SKILL.md, references, templates, CLI, tests, docs, or future work.\n- Baseline contamination risks are explicitly handled.\n\n## Verification\nA future agent can use the decision document to decide whether a proposed skill change belongs in baseline mode, expanded mode, CLI/tooling, or docs.",
+      "links": [
+        {"title": "Project README", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/docs/expanded-mode/linear-skill-outer-harness-upgrade/README.md"}
+      ]
+    },
+    {
+      "key": "LSOH-030",
+      "title": "Implement hard API-primary and MCP fallback rule across skill surfaces",
+      "parent": "LSOH-W3",
+      "milestone": "Harness Contract And Implementation",
+      "labels": ["agent-ready", "api-primary", "mcp-fallback", "serial-required", "baseline-protection"],
+      "blockedBy": ["LSOH-013", "LSOH-020"],
+      "writeSet": ["SKILL.md", "references/execution-hygiene.md", "references/operator-cheatsheet.md", "references/command-schemas.md", "tools/linear-front-door-evaluator.py", "tools/linear-skill-audit-evaluator.py", "tests/fixtures/linear_issue_templates.md"],
+      "serial": true,
+      "description": "## Objective\nMake API-primary/MCP-fallback a hard skill rule rather than soft wording.\n\n## Owned Scope\n- SKILL.md Linear Transition Wrapper and Live API Mode wording.\n- Relevant references and evaluator expectations.\n- Tests/fixtures that assert the contract.\n\n## Non-Owned Scope\n- Do not rewrite baseline mode into expanded mode.\n- Do not manually edit the installed runtime copy.\n- Do not change secret storage.\n\n## Acceptance Criteria\n- The skill says API must be attempted first whenever credentials are available.\n- The skill says MCP fallback must be used whenever API execution is unavailable, blocked, unimplemented, or fails read-back.\n- Fallback attempts and evidence must be recorded in Linear/ledger.\n- Evaluators catch regressions in this wording.\n\n## Verification\nRun front-door/audit evaluators plus the relevant unit tests.",
+      "links": [
+        {"title": "API/MCP decision", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/docs/expanded-mode/linear-skill-outer-harness-upgrade/decisions/api-primary-mcp-fallback.md"}
+      ]
+    },
+    {
+      "key": "LSOH-031",
+      "title": "Implement recursive research-to-issue loop guidance",
+      "parent": "LSOH-W3",
+      "milestone": "Harness Contract And Implementation",
+      "labels": ["agent-ready", "continuous-discovery", "ralph-loop", "autoresearch", "serial-required"],
+      "blockedBy": ["LSOH-012", "LSOH-020"],
+      "writeSet": ["SKILL.md", "references/expanded-mode.md", "references/validation-modes.md", "references/source-checkpoints.md", "templates/EXECUTION.md"],
+      "serial": true,
+      "description": "## Objective\nAdd explicit expanded-mode guidance for recursive project execution: research findings create issues, implementation triggers sensors, misses create follow-up issues, and the loop returns to research synthesis.\n\n## Acceptance Criteria\n- The loop is described without making deep recursion mandatory for baseline projects.\n- Continuous Issue Discovery is tied to research, implementation, review, verification, docs, release, and handoff.\n- Ledger template supports loop pass tracking.\n\n## Verification\nRun relevant evaluators and inspect the ledger template.",
+      "links": [
+        {"title": "Recursive loop research", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/docs/expanded-mode/linear-skill-outer-harness-upgrade/research/recursive-loop-design.md"}
+      ]
+    },
+    {
+      "key": "LSOH-032",
+      "title": "Implement deterministic and inferential sensor matrix",
+      "parent": "LSOH-W4",
+      "milestone": "Sensors And Recursive Verification",
+      "labels": ["agent-ready", "verification-gate", "serial-required", "outer-harness"],
+      "blockedBy": ["LSOH-011", "LSOH-020"],
+      "writeSet": ["references/validation-modes.md", "references/expanded-mode.md", "tools/linear-agent-evaluator.py", "tools/linear-skill-audit-evaluator.py", "docs/expanded-mode/linear-skill-outer-harness-upgrade/qa/qa-plan.md"],
+      "serial": true,
+      "description": "## Objective\nMake the skill's verification model read like an outer-harness sensor stack: deterministic computational sensors first, inferential sensors as review/judge passes, and final evidence recorded in Linear/ledger.\n\n## Acceptance Criteria\n- Deterministic sensors are explicit and repo-specific.\n- Inferential sensors are explicit but bounded.\n- The verification matrix explains when a failed sensor creates a new issue.\n- Evaluators check for sensor language.\n\n## Verification\nRun evaluator tools and standard test suite subset.",
+      "links": [
+        {"title": "QA plan", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/docs/expanded-mode/linear-skill-outer-harness-upgrade/qa/qa-plan.md"}
+      ]
+    },
+    {
+      "key": "LSOH-040",
+      "title": "Dogfood loop pass: apply research, run checks, discover follow-ups",
+      "parent": "LSOH-W4",
+      "milestone": "Sensors And Recursive Verification",
+      "labels": ["agent-ready", "ralph-loop", "autoresearch", "verification-gate", "serial-required"],
+      "blockedBy": ["LSOH-030", "LSOH-031", "LSOH-032"],
+      "writeSet": ["docs/expanded-mode/linear-skill-outer-harness-upgrade/qa/dogfood.md", "../.codex-linear-ledgers/linear-skill-outer-harness-upgrade/EXECUTION.md"],
+      "serial": true,
+      "description": "## Objective\nRun at least one full recursive pass after implementation: compare the skill against research docs, run deterministic checks, perform inferential review, create follow-up issues for misses, and loop until no high-priority miss remains.\n\n## Acceptance Criteria\n- Dogfood note records pass inputs, changed files, checks, findings, follow-up issues, and next pass decision.\n- Any missed requirement becomes a Linear issue or documented non-issue.\n- No issue is marked Done before verification evidence exists.\n\n## Verification\nCheck dogfood note, ledger, Linear issue states, and test/evaluator outputs.",
+      "links": [
+        {"title": "Dogfood QA", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/docs/expanded-mode/linear-skill-outer-harness-upgrade/qa/dogfood.md"}
+      ]
+    },
+    {
+      "key": "LSOH-050",
+      "title": "Release readiness, installed runtime sync, and final reconciliation",
+      "parent": "LSOH-W5",
+      "milestone": "Dogfood Release And Runtime Sync",
+      "labels": ["agent-ready", "verification-gate", "serial-required"],
+      "blockedBy": ["LSOH-040"],
+      "writeSet": ["CHANGELOG.md", "VERSION", "../.codex-linear-ledgers/linear-skill-outer-harness-upgrade/EXECUTION.md"],
+      "serial": true,
+      "description": "## Objective\nFinish only when source repo verification, Linear read-back, ledger reconciliation, installed runtime sync, and release readiness agree.\n\n## Acceptance Criteria\n- Standard verification suite has run or skipped checks are explicitly justified.\n- Runtime changes are installed with ./install.sh --with-docs and verified with ./install.sh --check.\n- Linear project has completion evidence and no unresolved required issues.\n- Release/publish path is followed if public release is in scope.\n\n## Verification\nRun final verification, install check, Linear read-back, and ledger reconciliation.",
+      "links": [
+        {"title": "Repo AGENTS instructions", "url": "file:///Users/ronniemeagher/Desktop/Curssor/mta-pt-workspace/projects/linear-project-planner-skill/AGENTS.md"}
+      ]
+    }
+  ]
+}

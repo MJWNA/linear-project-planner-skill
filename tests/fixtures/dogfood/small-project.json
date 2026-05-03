@@ -1,0 +1,67 @@
+{
+  "project": {
+    "name": "[SANDBOX] Dogfood Small - Settings Button Fix",
+    "mode": "normal",
+    "brief": "Fix the disabled settings save button after a small form validation regression. Keep scope narrow, verify with the existing unit test, and do not create expanded-mode docs.",
+    "ledgerPath": "../.codex-linear-ledgers/sandbox-dogfood-small/EXECUTION.md",
+    "principles": [
+      "Keep the fix narrow.",
+      "Do not expand the project beyond the observed regression.",
+      "Verification must prove the button state changes correctly."
+    ]
+  },
+  "labels": [
+    "agent-ready",
+    "serial-required",
+    "verification-missing",
+    "continuous-discovery"
+  ],
+  "milestones": [
+    "Triage",
+    "Implementation",
+    "Verification"
+  ],
+  "issues": [
+    {
+      "key": "DOG-S-001",
+      "title": "Guide: Agent Operating Guide",
+      "labels": ["agent-ready"],
+      "milestone": "Triage",
+      "description": "## Objective\nPreserve the original brief, dependency order, small-project non-scope, and next safest issue.\n\n## Context\nThis is a narrow implementation task. Expanded-mode local docs are non-scope.\n\n## Acceptance Criteria\n- Original brief is visible in the ledger.\n- First implementation issue is named.\n- Continuous Discovery rule says blockers or correctness issues become follow-up issues only when required.\n\n## Verification\nRead back the project graph and ledger before implementation starts.\n\n## Notes For Future Agents\nStart with DOG-S-002. Keep any discovered non-blocking improvements as candidates.",
+      "links": [
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-small/EXECUTION.md"}
+      ],
+      "writeSet": ["../.codex-linear-ledgers/sandbox-dogfood-small/EXECUTION.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-S-002",
+      "title": "Implement settings save button validation fix",
+      "parent": "DOG-S-001",
+      "blockedBy": ["DOG-S-001"],
+      "labels": ["agent-ready", "serial-required"],
+      "milestone": "Implementation",
+      "description": "## Objective\nFix the disabled save button regression.\n\n## Context\nThe form button should enable when required settings fields are valid.\n\n## Scope\n- Owned work: settings form validation code.\n- Non-scope: unrelated UX copy, settings layout, or validation framework changes.\n\n## Dependencies / Blockers\n- Blocked by: DOG-S-001 operating guide.\n\n## Acceptance Criteria\n- Save button enables for valid fields.\n- Invalid fields still keep the button disabled.\n\n## Verification\nRun the targeted settings form unit test and record the command output.\n\n## Notes For Future Agents\nCreate a follow-up issue only if validation behavior is ambiguous or a failing test reveals a separate defect.",
+      "links": [
+        {"title": "Settings form source", "url": "file://app/settings"},
+        {"title": "Verification command", "url": "file://package.json"}
+      ],
+      "writeSet": ["app/settings/**", "tests/settings-form.test.ts"],
+      "serial": true
+    },
+    {
+      "key": "DOG-S-003",
+      "title": "Verify and close the small fix",
+      "parent": "DOG-S-001",
+      "blockedBy": ["DOG-S-002"],
+      "labels": ["agent-ready", "serial-required"],
+      "milestone": "Verification",
+      "description": "## Objective\nClose the project only after the targeted fix is verified.\n\n## Context\nSmall projects still need a completion comment and ledger read-back.\n\n## Acceptance Criteria\n- Targeted test result is recorded.\n- Ledger has final verification evidence.\n- No expanded-mode artifacts were created.\n\n## Verification\nRun the targeted test and inspect the git diff for unrelated changes.\n\n## Notes For Future Agents\nIf verification reveals another defect, classify it through Continuous Issue Discovery before closing.",
+      "links": [
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-small/EXECUTION.md"}
+      ],
+      "writeSet": ["../.codex-linear-ledgers/sandbox-dogfood-small/EXECUTION.md"],
+      "serial": true
+    }
+  ]
+}

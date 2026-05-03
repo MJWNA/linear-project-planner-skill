@@ -1,0 +1,124 @@
+{
+  "project": {
+    "name": "[SANDBOX] Dogfood Continuous Discovery - Importer Cleanup",
+    "mode": "continuous-discovery",
+    "brief": "Start with an importer cleanup, then capture a discovered schema mismatch as a blocker issue and a non-blocking documentation candidate without losing the original project shape.",
+    "ledgerPath": "../.codex-linear-ledgers/sandbox-dogfood-continuous/EXECUTION.md",
+    "principles": [
+      "The original plan is a starting model.",
+      "Blocking discoveries become issues immediately.",
+      "Non-blocking scope expansions remain candidates until coordinator review."
+    ],
+    "discoveryEvents": [
+      {
+        "classification": "Blocker",
+        "surfacedBy": "DOG-C-003",
+        "createdIssue": "DOG-C-004",
+        "reason": "Importer validation found a schema mismatch required for acceptance."
+      },
+      {
+        "classification": "Documentation gap",
+        "surfacedBy": "DOG-C-003",
+        "candidateIssue": "DOG-C-006",
+        "reason": "Runbook copy is useful but not required for importer correctness."
+      }
+    ]
+  },
+  "labels": [
+    "agent-ready",
+    "parallel-safe",
+    "serial-required",
+    "touches-db",
+    "verification-missing",
+    "continuous-discovery"
+  ],
+  "milestones": [
+    "Bootstrap",
+    "Importer Cleanup",
+    "Discovered Blocking Work",
+    "Verification & Closeout"
+  ],
+  "issues": [
+    {
+      "key": "DOG-C-001",
+      "title": "Guide: Agent Operating Guide",
+      "labels": ["agent-ready"],
+      "milestone": "Bootstrap",
+      "description": "## Objective\nPreserve the original importer cleanup brief and Continuous Discovery rules.\n\n## Context\nThis project intentionally includes discovered work.\n\n## Acceptance Criteria\n- Blocker discoveries become issues.\n- Non-blocking documentation expansion remains a candidate.\n- Ledger records why each discovery exists.\n\n## Verification\nRead back issue graph and Continuous Discovery log.\n\n## Notes For Future Agents\nDOG-C-004 was discovered by DOG-C-003 and blocks final verification.",
+      "links": [
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-continuous/EXECUTION.md"}
+      ],
+      "writeSet": ["../.codex-linear-ledgers/sandbox-dogfood-continuous/EXECUTION.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-C-002",
+      "title": "Guide: Verification Matrix",
+      "labels": ["agent-ready", "verification-missing"],
+      "milestone": "Bootstrap",
+      "description": "## Objective\nDefine importer cleanup verification and discovery closeout requirements.\n\n## Context\nVerification must include the discovered blocker once it exists.\n\n## Acceptance Criteria\n- Importer tests are named.\n- Schema mismatch verification is included.\n- Candidate documentation issue is not required for closeout.\n\n## Verification\nReview after discovery and before final closeout.\n\n## Notes For Future Agents\nUpdate this matrix when blocker or QA gap discoveries change acceptance.",
+      "links": [
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-continuous/EXECUTION.md"}
+      ],
+      "writeSet": ["docs/importer-verification.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-C-003",
+      "title": "Clean importer validation path",
+      "parent": "DOG-C-001",
+      "labels": ["agent-ready", "serial-required"],
+      "milestone": "Importer Cleanup",
+      "description": "## Objective\nClean the importer validation path.\n\n## Context\nDuring this work, a schema mismatch may be discovered.\n\n## Scope\n- Owned work: importer validation code.\n- Non-scope: schema migration unless discovery proves it blocks acceptance.\n\n## Acceptance Criteria\n- Validation code is simpler and covered by tests.\n- Blocking discoveries are created as new issues, not buried in notes.\n\n## Verification\nRun importer validation tests.\n\n## Notes For Future Agents\nThis issue surfaced DOG-C-004 and DOG-C-006.",
+      "links": [
+        {"title": "Importer source", "url": "file://app/importer"}
+      ],
+      "blocks": ["DOG-C-004"],
+      "writeSet": ["app/importer/**", "tests/importer-validation.test.ts"],
+      "serial": true
+    },
+    {
+      "key": "DOG-C-004",
+      "title": "Discovered blocker: reconcile importer schema mismatch",
+      "parent": "DOG-C-001",
+      "blockedBy": ["DOG-C-003"],
+      "labels": ["agent-ready", "serial-required", "touches-db", "continuous-discovery"],
+      "milestone": "Discovered Blocking Work",
+      "description": "## Why It Was Discovered\nImporter validation found that accepted payloads include a field not represented in the schema mapping.\n\n## Surfaced By\nDOG-C-003 Clean importer validation path.\n\n## Classification\nBlocker.\n\n## Objective\nReconcile the schema mismatch required for importer cleanup acceptance.\n\n## Dependencies / Blockers\n- Blocked by: DOG-C-003 discovery evidence.\n- Blocks: DOG-C-005 final verification.\n\n## Acceptance Criteria\n- Schema mapping accepts the confirmed field or rejects it deliberately with documented rationale.\n- Importer tests cover the mismatch.\n\n## Verification\nRun importer schema and validation tests.\n\n## Future-Agent Context\nThis issue was not in the original plan; it was created because acceptance would otherwise be false.",
+      "links": [
+        {"title": "Discovery log", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-continuous/EXECUTION.md#continuous-issue-discovery-log"}
+      ],
+      "blocks": ["DOG-C-005"],
+      "writeSet": ["app/importer/schema/**", "tests/importer-schema.test.ts"],
+      "serial": true
+    },
+    {
+      "key": "DOG-C-005",
+      "title": "Final importer verification and closeout",
+      "parent": "DOG-C-001",
+      "blockedBy": ["DOG-C-004"],
+      "labels": ["agent-ready", "serial-required", "verification-missing"],
+      "milestone": "Verification & Closeout",
+      "description": "## Objective\nVerify importer cleanup plus discovered blocker resolution.\n\n## Context\nDOG-C-006 is a non-blocking candidate and must not block closeout unless accepted by the coordinator.\n\n## Acceptance Criteria\n- Importer validation and schema tests pass.\n- Continuous Discovery log names created and candidate issues.\n- Completion comment explains residual risks and follow-ups.\n\n## Verification\nRun importer test suite and ledger read-back.\n\n## Notes For Future Agents\nConfirm DOG-C-006 remains proposed or explicitly accepted before adding scope.",
+      "links": [
+        {"title": "Verification matrix", "url": "file://docs/importer-verification.md"},
+        {"title": "Companion ledger", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-continuous/EXECUTION.md"}
+      ],
+      "writeSet": ["../.codex-linear-ledgers/sandbox-dogfood-continuous/EXECUTION.md"],
+      "serial": true
+    },
+    {
+      "key": "DOG-C-006",
+      "title": "Candidate: document importer payload edge cases",
+      "parent": "DOG-C-001",
+      "labels": ["continuous-discovery"],
+      "milestone": "Verification & Closeout",
+      "description": "## Why It Was Discovered\nDOG-C-003 revealed importer payload edge cases that would benefit from runbook documentation.\n\n## Surfaced By\nDOG-C-003 Clean importer validation path.\n\n## Classification\nDocumentation gap.\n\n## Create / Propose / Log\nPropose. This should not block DOG-C-005 unless accepted by the coordinator.\n\n## Acceptance Criteria\n- Runbook explains accepted payload edge cases.\n- Examples match verified schema behavior.\n\n## Verification\nDocs review after coordinator acceptance.\n\n## Future-Agent Context\nThis is useful but non-blocking scope expansion.",
+      "links": [
+        {"title": "Discovery log", "url": "file://../.codex-linear-ledgers/sandbox-dogfood-continuous/EXECUTION.md#continuous-issue-discovery-log"}
+      ],
+      "writeSet": ["docs/importer-runbook.md"],
+      "serial": true
+    }
+  ]
+}
