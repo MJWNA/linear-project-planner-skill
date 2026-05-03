@@ -16,8 +16,10 @@ Agent-ready Linear project planning, execution tracking, and cross-session hando
 For this skill's own workflow, direct GraphQL is the primary route whenever
 `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` is available. Use the Codex Linear
 app/MCP connector only as a fallback for credentials-free runtimes, explicit
-connector requests, or operations that have not yet been implemented in
-`linear-agent`.
+connector requests, operations that have not yet been implemented in
+`linear-agent`, direct API blocks/rejections, or failed read-back confirmation.
+Record the API attempt, fallback path, and read-back evidence in the ledger or
+relevant Linear comment.
 
 This skill helps an AI agent turn a Linear project into a real execution system. Instead of producing a flat backlog and hoping future agents remember what happened, it creates a structured operating model: milestones, parent workstreams, guide issues, labels, verification gates, issue-state hygiene, and a companion Markdown execution ledger that survives context resets.
 
@@ -736,7 +738,7 @@ shellcheck install.sh scripts/linear-agent tests/test-linear-agent.sh
 
 ## Deployment / Release
 
-Current production release: `v4.0.1`.
+Current production release: `v4.2.0`.
 
 The repository is published as a public GitHub repo and installed locally with `./install.sh`. Releases use the manual release workflow after a known-good commit is tagged, [CHANGELOG.md](CHANGELOG.md) is updated, and CI passes.
 
@@ -751,7 +753,7 @@ The live Linear smoke workflow is not expected to run on normal pull requests. T
 - If `complete` fails, add a concrete `--verification` string.
 - If `start --parallel-write` fails, provide a `--worktree` path so write-capable agents do not share one checkout.
 - If `--apply-linear` fails with missing credentials, set `LINEAR_API_KEY`, set `LINEAR_ACCESS_TOKEN`, or use default dry-run mode and perform the printed Linear app/MCP/manual fallback actions.
-- If `--apply-linear` reports a post-update confirmation failure, run `linear-agent reconcile --ledger <path>` before manually confirming the ledger.
+- If `--apply-linear` reports a post-update confirmation failure, run `linear-agent reconcile --ledger <path>`, use the Linear MCP fallback when the API path cannot prove the state, and record both the failure and fallback evidence before manually confirming the ledger.
 - If direct mode reports a read-back mismatch, run `linear-agent reconcile --ledger /path/to/EXECUTION.md` before continuing.
 - If Linear state names differ in your workspace, set the `LINEAR_STATE_*` override variables or record the mismatch in the ledger before continuing.
 - If Linear rejects optional project metadata such as `icon`, retry without that cosmetic field and record the workspace validation note in the operating guide or ledger.

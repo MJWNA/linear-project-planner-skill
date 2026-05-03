@@ -103,6 +103,11 @@ Read:
 
 Record exact checks and evidence before marking an issue done.
 
+For recursive or auto-research loops, also reread the frozen evaluator set,
+the latest research synthesis, and the Continuous Issue Discovery log. If a
+check fails, classify the miss before retrying and return to the smallest
+responsible issue instead of broadening the loop by default.
+
 ## Before Handoff
 
 Read:
@@ -129,3 +134,6 @@ Read:
 
 Do not close until Linear, the ledger, verification evidence, and dependency
 state agree. If they do not agree, reconcile first and leave the project open.
+For expanded recursive projects, close only after the final loop pass records
+the stop condition, unresolved misses, and why any deferred follow-up does not
+block completion.

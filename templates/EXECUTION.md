@@ -112,6 +112,17 @@ coordinator review before becoming non-blocking scope expansion.
 |---|---|---|---|---|---|---|---|---|---|
 | TBD | Blocker / Dependency / Defect / Research follow-up / Implementation follow-up / Decision required / QA / verification gap / Documentation gap / Scope expansion / Risk / mitigation | TBD | Issue/workstream | TBD | TBD | TBD | TBD | TBD | TBD |
 
+## Recursive Loop / Steering Log
+
+Use this when the project enables Ralph Wiggum loops, auto-research loops,
+dogfood, recursive validation, or long-horizon iteration. Keep the evaluator set
+frozen for final-loop claims unless the active issue is explicitly repairing an
+invalid evaluator.
+
+| Pass | Loop Type | Source Scope | Frozen Sensors | Change / Review Focus | Result | Miss Classification | Linear Issue / Candidate | Next Loop Decision |
+|---|---|---|---|---|---|---|---|---|
+| TBD | Ralph / auto-research / dogfood | TBD | TBD | TBD | pass / fail / inconclusive | TBD | TBD | retry / continue / stop |
+
 ## Issue Progress
 
 | Issue | Linear Status | Agent State | Owner/Agent | Worktree | Last Update | Verification |

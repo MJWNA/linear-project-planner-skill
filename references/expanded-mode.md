@@ -261,6 +261,26 @@ Dogfood expanded mode on itself or a contained project before release when the
 mode changes skill behavior, templates, evaluators, or installed runtime
 instructions.
 
+## Recursive Loop Protocol
+
+When the user asks for recursive, long-horizon, Ralph Wiggum, or auto-research
+style execution, make the loop explicit in Linear and the ledger:
+
+1. Define the loop type, frozen evaluator set, source scope, issue-creation
+   threshold, and stop condition.
+2. Run research or review against the smallest responsible issue.
+3. Apply one focused implementation change.
+4. Run computational sensors first, then inferential review.
+5. Classify misses through Continuous Issue Discovery.
+6. Create or update Linear issues for actionable blockers, defects,
+   dependencies, QA gaps, docs gaps, or future-agent recovery failures.
+7. Return to the relevant research or implementation issue and repeat until the
+   stop condition is met.
+
+Keep this protocol in expanded mode or explicit deep validation. Baseline
+projects still use standard validation unless the user opts into the deeper
+loop.
+
 ## Templates
 
 Use the templates in `templates/expanded-mode/` when they reduce recovery cost:

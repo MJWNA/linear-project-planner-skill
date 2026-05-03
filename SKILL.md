@@ -233,9 +233,11 @@ statuses, or dependencies. Keep checklist state honest with `[ ]`, `[x]`, and
 Use `linear-agent` for execution-state transitions and graph creation. Direct
 Linear GraphQL is the primary path for this skill whenever `LINEAR_API_KEY` or
 `LINEAR_ACCESS_TOKEN` is available. The Codex Linear app/MCP connector is a
-fallback surface only: use it when credentials are unavailable, when the user
-explicitly asks for the connector, or when a direct API operation is not yet
-implemented.
+required fallback surface: use it when credentials are unavailable, when the
+user explicitly asks for the connector, when a direct API operation is not yet
+implemented, when the API rejects or blocks a valid operation, or when API
+read-back cannot confirm the requested Linear state. In short: when API read-back cannot confirm the result, fallback is required. Record the API attempt,
+fallback path, and read-back evidence in the ledger or relevant Linear comment.
 
 With credentials and `--apply-linear`, the CLI writes directly to Linear's
 GraphQL API and verifies read-back before confirming success. Without
@@ -266,7 +268,10 @@ updates Linear project graphs directly through `https://api.linear.app/graphql`.
 Linear MCP is no longer required for graph creation when credentials are
 available. If an agent can see credentials, it should not ask the Linear
 app/MCP connector to create, update, read back, reconcile, discover, or promote
-project graph state unless the user explicitly requested that connector path.
+project graph state unless the user explicitly requested that connector path or
+the direct API path is unavailable, blocked, missing the required operation, or
+cannot prove read-back. When that happens, fall back to MCP immediately and
+preserve the blocked API evidence.
 
 Supported live operations:
 

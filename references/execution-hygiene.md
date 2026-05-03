@@ -44,8 +44,11 @@ When credentials exist, direct GraphQL mode is the primary path: add
 `--apply-linear` so the wrapper writes through `https://api.linear.app/graphql`
 and confirms Linear state/comment read-back. After a dry-run wrapper
 transition, treat the printed Linear app/MCP/manual actions as fallback
-instructions for credentials-free runtimes or explicit connector requests, then
-read the issue back before claiming success.
+instructions for credentials-free runtimes or explicit connector requests. If
+the direct API path is unavailable, lacks the requested operation, blocks a
+valid request, or fails read-back confirmation, switch to the Linear MCP
+fallback immediately. Record the API failure, fallback command/tool, and
+read-back evidence before claiming success.
 
 ## Issue State Hygiene
 

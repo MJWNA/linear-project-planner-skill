@@ -13,7 +13,9 @@ shell CLI is the implemented reference surface.
 Direct Linear GraphQL is the primary implementation path when credentials are
 available. MCP or connector tools should wrap this contract only when they call
 the same API behavior, when the runtime has no direct API credentials, or when
-the user explicitly requests the connector.
+the user explicitly requests the connector. They are also the required fallback
+when direct API execution is unavailable, blocks or rejects a valid operation,
+lacks the needed operation, or fails read-back confirmation.
 
 | Tool | Purpose | Side effects |
 |---|---|---|
@@ -44,9 +46,10 @@ the user explicitly requests the connector.
 - `apply_linear`: explicit opt-in for direct Linear writes.
 - `json`: emit stable machine-readable output.
 - `from`: path to a graph plan file for graph and allocation commands.
-- `connector_fallback`: allowed only when credentials are missing, direct API
-  lacks the requested operation, or the user explicitly asks for the Linear app
-  or MCP connector.
+- `connector_fallback`: required when credentials are missing, direct API
+  lacks the requested operation, API execution is unavailable or blocked,
+  read-back cannot confirm the result, or the user explicitly asks for the
+  Linear app or MCP connector.
 
 ## Planning Output Modes
 

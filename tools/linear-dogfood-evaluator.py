@@ -10,6 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +63,44 @@ def issue_text(issue: dict[str, Any]) -> str:
 def has_sections(issue: dict[str, Any], headings: tuple[str, ...]) -> bool:
     text = issue_text(issue)
     return all(f"## {heading}" in text for heading in headings)
+
+
+def allowed_attachment_links(issue: dict[str, Any]) -> list[dict[str, str]]:
+    links = []
+    for link in issue.get("links", []):
+        parsed = urlparse(link.get("url", ""))
+        if parsed.scheme in {"http", "https"} and parsed.netloc:
+            links.append(link)
+    return links
+
+
+def actual_issue_for_plan(state_issues: dict[str, Any], issue: dict[str, Any]) -> dict[str, Any]:
+    keyed = state_issues.get(issue["key"])
+    if keyed:
+        return keyed
+    for actual in state_issues.values():
+        if actual.get("title") == issue.get("title"):
+            return actual
+    return {}
+
+
+def actual_attachment_links(state: dict[str, Any], actual_issue: dict[str, Any]) -> list[dict[str, str]]:
+    issue_id = actual_issue.get("id")
+    embedded = actual_issue.get("attachments", {}).get("nodes", [])
+    top_level = [
+        attachment
+        for attachment in state.get("attachments", [])
+        if attachment.get("issue", {}).get("id") == issue_id
+    ]
+    seen: set[tuple[str, str]] = set()
+    links: list[dict[str, str]] = []
+    for item in [*embedded, *top_level]:
+        key = (item.get("title", ""), item.get("url", ""))
+        if key in seen:
+            continue
+        seen.add(key)
+        links.append({"title": key[0], "url": key[1]})
+    return links
 
 
 def live_run_plan(plan_path: Path, plan: dict[str, Any]) -> dict[str, Any]:
@@ -134,12 +173,15 @@ def score(plans: list[dict[str, Any]], runs: dict[str, dict[str, Any]]) -> dict[
     described_state_issues = 0
     linked_state_issues = 0
     for plan in plans:
-        state_issues = runs[plan["project"]["name"]]["state"].get("issues", {})
+        state = runs[plan["project"]["name"]]["state"]
+        state_issues = state.get("issues", {})
         for issue in plan["issues"]:
-            actual = state_issues.get(issue["key"], {})
+            actual = actual_issue_for_plan(state_issues, issue)
             if actual.get("description") == issue.get("description"):
                 described_state_issues += 1
-            if actual.get("links") == issue.get("links", []):
+            expected_links = allowed_attachment_links(issue)
+            actual_links = actual_attachment_links(state, actual)
+            if sorted(actual_links, key=lambda item: item["url"]) == sorted(expected_links, key=lambda item: item["url"]):
                 linked_state_issues += 1
 
     checks: dict[str, bool] = {
