@@ -127,6 +127,113 @@ This project uses lightweight SemVer tags for stable skill snapshots. Until the 
   safe-parallelism allocation fields and checkpoint recording.
 - Added front-door evaluator coverage for the safe-parallelism contract.
 
+## 4.1.0 - 2026-04-30
+
+- Added reactive Linear issue spillover for direct GraphQL graph apply: issue
+  descriptions are written to Linear normally first, and only size/length
+  rejection errors trigger local Markdown spillover plus a compact retry body.
+- Added `--spillover-dir` and `project.spilloverDir` support so projects can
+  route overflow context into a known local docs root when Linear rejects an
+  oversized issue payload.
+- Added fake Linear limit coverage and graph read-back handling for spillover
+  pointer descriptions.
+- Initialized the dogfood evaluator fake Linear state before apply/read-back so
+  its delivery checks exercise the graph path instead of failing before setup.
+
+## 4.0.1 - 2026-04-30
+
+- Made direct Linear GraphQL the documented primary path whenever
+  `LINEAR_API_KEY` or `LINEAR_ACCESS_TOKEN` is available; Linear app/MCP/manual
+  actions are now explicitly framed as fallback-only unless requested.
+- Updated dry-run transition output so agents see the direct API path first and
+  fallback connector actions second.
+- Scoped graph-apply title idempotence to the target project to avoid reusing
+  generic guide issue titles from unrelated Linear projects.
+- Added Context7/official Linear docs checkpoint coverage to the v4.0.1 project
+  and evaluator coverage for API-primary routing.
+
+## 4.0.0 - 2026-04-30
+
+- Aligned live GraphQL mutations with Linear's current schema by replacing the
+  stale project teardown mutation with `projectDelete`.
+- Added `issueBatchCreate` for efficient graph bootstrap while preserving
+  idempotent lookup/update behavior and per-issue read-back verification.
+- Upgraded live project read-back and project-scan reconciliation to follow
+  cursor pagination across all project issues at 250 issues per page.
+- Expanded direct graph support for `related` and `duplicate` issue relations,
+  richer attachment metadata, and attachment read-back drift detection.
+- Added header-aware rate-limit budget tracking on top of the existing
+  `RATELIMITED` / HTTP 429 exponential backoff path.
+- Re-pinned the frozen CLI evaluator for the v4 API contract and refreshed
+  documentation for the direct API mode.
+
+## 3.6.0 - 2026-04-30
+
+- Lifted the live `graph-apply --apply-linear` gate so project graphs can be
+  created directly through Linear's GraphQL API without requiring a Linear MCP
+  server for project creation.
+- Added idempotent direct GraphQL operations for projects, labels, milestones,
+  issues, issue relations, and attachments, with fake transport handlers,
+  rate-limit retries, mutation success checks, and read-back verification.
+- Added live graph read-back and project-scan reconciliation so the CLI can
+  detect Linear issues missing from the ledger and ledger rows missing from
+  Linear.
+- Added `linear-agent discover` and `linear-agent promote` for Continuous Issue
+  Discovery rows and optional live Linear issue creation.
+- Updated live Linear smoke coverage, docs, evaluator expectations, and the ADR
+  trail for direct API mode. Linear MCP remains a fallback for runtimes without
+  credentials, not the graph-creation source of truth.
+
+## 3.5.0 - 2026-04-30
+
+- Added a live dogfood evaluator with small, medium, large, expanded-mode, and
+  continuous-discovery sandbox plans.
+- Added source material checkpoint guidance and companion-ledger tracking for
+  kickoff, planning, issue creation, implementation, parallel delegation, scope
+  changes, verification, handoff, and closeout.
+- Extended graph plan fake apply/read-back to preserve and verify issue
+  descriptions, milestones, and links so dogfood tests validate agent-ready
+  issue quality.
+- Added dogfood fixture coverage and expanded audit coverage for source
+  checkpoint discipline.
+
+## 3.4.0 - 2026-04-30
+
+- Added a scaled Project Principles / Fundamentals surface for Linear projects,
+  with compact baseline guidance, a full companion-document template,
+  amendment rules, ledger placeholders, expanded-mode links, and evaluator
+  coverage.
+- Added Continuous Issue Discovery as a global planning behavior for normal and
+  expanded mode, including create/propose/log decision rules and discovery
+  classifications for blockers, dependencies, defects, follow-ups, decisions,
+  QA gaps, documentation gaps, scope expansions, and risks.
+- Added compact normal-mode project description and issue body structures, plus
+  expanded-mode charter and rich issue body structures for long-horizon,
+  multi-agent delivery.
+- Added evaluator and fixture coverage for Continuous Issue Discovery, normal
+  planning outputs, expanded planning outputs, and release-gate changelog
+  verification.
+
+## 3.3.0 - 2026-04-29
+
+- Added an opt-in expanded mode for long-horizon Linear projects, with a
+  compact `SKILL.md` router, detailed `references/expanded-mode.md` workflow,
+  and reusable expanded-mode templates.
+- Added research-backed design artifacts for software-firm operating models,
+  Context7/OpenAI provenance, dependency mapping, and multi-agent QA.
+- Added evaluator coverage proving expanded mode is additive and baseline mode
+  remains the default.
+
+## 3.2.0 - 2026-04-28
+
+- Added an explicit safe-parallelism contract requiring repeated checkpoints,
+  dependency/write-scope/risk/verification grouping, worktree-safe parallel
+  agents, bounded context-isolation agents, serial-constraint explanations, and
+  follow-up issue splitting.
+- Expanded execution references and the companion ledger template with concrete
+  safe-parallelism allocation fields and checkpoint recording.
+- Added front-door evaluator coverage for the safe-parallelism contract.
+
 ## 3.1.0 - 2026-04-28
 
 - Slimmed `SKILL.md` into a trigger-safe front door backed by focused references for project structure, execution hygiene, validation modes, and trigger preservation.
