@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Dry-run smoke
         run: scripts/linear-agent graph-plan --from tests/fixtures/linear_graph_plan.json
